@@ -1,5 +1,4 @@
 import type {
-  AuditEvent,
   ConsoleLine,
   SettingsData,
 } from "./types";
@@ -34,7 +33,6 @@ export const api = {
       { method: "POST", body: JSON.stringify({ command }) },
       csrf,
     ),
-  audit: () => request<{ events: AuditEvent[] }>("/api/v1/audit?limit=200"),
   users: () => request<{ users: User[] }>("/api/v1/users"),
   createUser: (csrf: string, username: string, password: string, role: Role) =>
     request<User>(

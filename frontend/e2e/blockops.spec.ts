@@ -53,6 +53,13 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByRole("link", { name: "Audit log", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Audit log", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "auth.setup" })).toBeVisible();
+  await page.goto("/audit?q=auth.setup&outcome=success");
+  await expect(page.getByRole("searchbox", { name: "Search audit events" })).toHaveValue("auth.setup");
+  await expect(page.getByRole("button", { name: "success" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("cell", { name: "auth.setup" })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/audit\?q=auth\.setup&outcome=success$/);
+  await expect(page.getByRole("cell", { name: "auth.setup" })).toBeVisible();
 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();

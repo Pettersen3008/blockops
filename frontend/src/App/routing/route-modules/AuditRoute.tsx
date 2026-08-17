@@ -1,4 +1,4 @@
-import { AuditPage } from "@/pages/AuditPage";
+import { AuditPage } from "@/features/audit";
 import { PermissionBoundary } from "../PermissionBoundary";
 
 export function Component() {
