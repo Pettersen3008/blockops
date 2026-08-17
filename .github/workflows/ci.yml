@@ -36,13 +36,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --ignore-scripts
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm audit --audit-level=high
-      - run: npm run build
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm verify
+      - run: pnpm audit --audit-level=high
 
   browser:
     runs-on: ubuntu-latest
@@ -56,11 +53,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --ignore-scripts
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: frontend
-      - run: npm run build
+      - run: pnpm build
         working-directory: frontend
       - name: Assemble production web assets
         run: cp -R frontend/dist/. backend/internal/webui/dist/
@@ -68,7 +64,7 @@ jobs:
         run: go build -trimpath -o "$RUNNER_TEMP/blockops" ./cmd/blockops
         working-directory: backend
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
         working-directory: frontend
       - name: Start production server
         env:
@@ -95,7 +91,7 @@ jobs:
       - name: Run production browser smoke test
         env:
           BLOCKOPS_E2E_URL: http://127.0.0.1:8080
-        run: npm run test:e2e
+        run: pnpm test:e2e
         working-directory: frontend
 
   container:

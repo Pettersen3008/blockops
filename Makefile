@@ -4,17 +4,17 @@ dev-api:
 	cd backend && BLOCKOPS_COOKIE_SECURE=false BLOCKOPS_DATABASE_PATH=$${PWD}/../runtime/blockops.db BLOCKOPS_MINECRAFT_DATA_DIR=$${PWD}/../runtime/minecraft BLOCKOPS_BACKUP_DIR=$${PWD}/../runtime/backups go run ./cmd/blockops
 
 dev-web:
-	cd frontend && npm run dev
+	cd frontend && pnpm dev
 
 test:
 	cd backend && go test -race ./...
-	cd frontend && npm run typecheck && npm test
+	cd frontend && pnpm typecheck && pnpm test
 
 test-e2e:
-	cd frontend && npm run test:e2e
+	cd frontend && pnpm test:e2e
 
 build:
-	cd frontend && npm run build
+	cd frontend && pnpm build
 	cd backend && go build ./cmd/blockops
 
 compose-config:

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev": "rsbuild dev",
     "build": "tsc -b && rsbuild build",
@@ -12,7 +13,8 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run src",
-    "test:watch": "vitest src"
+    "test:watch": "vitest src",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm boundaries && pnpm knip && pnpm build"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

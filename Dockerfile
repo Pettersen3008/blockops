@@ -1,10 +1,11 @@
 # syntax=docker/dockerfile:1.7
 FROM node:24-alpine3.24 AS frontend-build
 WORKDIR /build/frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN corepack enable
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY frontend/ ./
-RUN npm run build
+RUN pnpm build
 
 FROM golang:1.25.13-alpine3.24 AS backend-build
 WORKDIR /build/backend
