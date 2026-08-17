@@ -1,0 +1,77 @@
+name: blockops
+
+services:
+  dashboard:
+    build:
+      context: .
+    image: blockops:local
+    restart: unless-stopped
+    depends_on:
+      - docker-guard
+    environment:
+      BLOCKOPS_LISTEN_ADDRESS: ":8080"
+      BLOCKOPS_DATABASE_PATH: /data/blockops.db
+      BLOCKOPS_BACKUP_DIR: /backups
+      BLOCKOPS_MINECRAFT_DATA_DIR: /minecraft
+      BLOCKOPS_WORLD_NAME: ${BLOCKOPS_WORLD_NAME:-world}
+      BLOCKOPS_MINECRAFT_CONTAINER: ${BLOCKOPS_MINECRAFT_CONTAINER:?Set the exact Minecraft container name}
+      BLOCKOPS_DOCKER_URL: http://docker-guard:2375
+      BLOCKOPS_RCON_ADDRESS: ${BLOCKOPS_RCON_ADDRESS:-minecraft:25575}
+      BLOCKOPS_RCON_PASSWORD: ${BLOCKOPS_RCON_PASSWORD:?Set the existing Minecraft RCON password}
+      BLOCKOPS_ENCRYPTION_KEY: ${BLOCKOPS_ENCRYPTION_KEY:?Generate a base64 32-byte encryption key}
+      BLOCKOPS_PUBLIC_ORIGIN: ${BLOCKOPS_PUBLIC_ORIGIN:-}
+      BLOCKOPS_COOKIE_SECURE: ${BLOCKOPS_COOKIE_SECURE:-true}
+      BLOCKOPS_TRUSTED_PROXIES: ${BLOCKOPS_TRUSTED_PROXIES:-}
+      BLOCKOPS_SESSION_TTL: ${BLOCKOPS_SESSION_TTL:-12h}
+      BLOCKOPS_MAX_UPLOAD_BYTES: ${BLOCKOPS_MAX_UPLOAD_BYTES:-2147483648}
+    ports:
+      - "${BLOCKOPS_BIND_ADDRESS:-127.0.0.1}:${BLOCKOPS_PORT:-8080}:8080"
+    volumes:
+      - blockops-data:/data
+      - blockops-backups:/backups
+      - ${MINECRAFT_DATA_SOURCE:-minecraft-data}:/minecraft
+    networks:
+      - app-control
+      - minecraft-control
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  docker-guard:
+    build:
+      context: .
+    image: blockops:local
+    entrypoint: ["/usr/local/bin/blockops-docker-guard"]
+    user: "0:0"
+    restart: unless-stopped
+    environment:
+      BLOCKOPS_MINECRAFT_CONTAINER: ${BLOCKOPS_MINECRAFT_CONTAINER:?Set the exact Minecraft container name}
+      BLOCKOPS_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-control
+    read_only: true
+    tmpfs:
+      - /run:size=8m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+networks:
+  app-control:
+    internal: true
+  minecraft-control:
+    name: blockops-minecraft
+    internal: true
+
+volumes:
+  blockops-data:
+  blockops-backups:
+  minecraft-data:
+    name: minecraft-data

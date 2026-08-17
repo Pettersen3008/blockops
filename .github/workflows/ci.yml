@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.13
+          cache-dependency-path: backend/go.sum
+      - run: go test -race ./...
+      - run: go vet ./...
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+      - run: govulncheck ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build
+
+  browser:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.13
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: Assemble production web assets
+        run: cp -R frontend/dist/. backend/internal/webui/dist/
+      - name: Build production server
+        run: go build -trimpath -o "$RUNNER_TEMP/blockops" ./cmd/blockops
+        working-directory: backend
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Start production server
+        env:
+          BLOCKOPS_LISTEN_ADDRESS: 127.0.0.1:8080
+          BLOCKOPS_DATABASE_PATH: ${{ runner.temp }}/blockops-e2e/data/blockops.db
+          BLOCKOPS_MINECRAFT_DATA_DIR: ${{ runner.temp }}/blockops-e2e/minecraft
+          BLOCKOPS_BACKUP_DIR: ${{ runner.temp }}/blockops-e2e/backups
+          BLOCKOPS_DOCKER_URL: http://127.0.0.1:9
+          BLOCKOPS_RCON_ADDRESS: 127.0.0.1:9
+          BLOCKOPS_RCON_PASSWORD: ci-browser-only
+          BLOCKOPS_PUBLIC_ORIGIN: http://127.0.0.1:8080
+          BLOCKOPS_COOKIE_SECURE: "false"
+        run: |
+          mkdir -p "$RUNNER_TEMP/blockops-e2e/data" "$RUNNER_TEMP/blockops-e2e/minecraft" "$RUNNER_TEMP/blockops-e2e/backups"
+          "$RUNNER_TEMP/blockops" >"$RUNNER_TEMP/blockops-e2e/server.log" 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/blockops-e2e/server.log"
+          exit 1
+      - name: Run production browser smoke test
+        env:
+          BLOCKOPS_E2E_URL: http://127.0.0.1:8080
+        run: npm run test:e2e
+        working-directory: frontend
+
+  container:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, browser]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        env:
+          BLOCKOPS_MINECRAFT_CONTAINER: minecraft
+          BLOCKOPS_RCON_PASSWORD: ci-not-a-production-secret
+          BLOCKOPS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+        run: docker compose config --quiet
+      - run: docker build --tag blockops:ci .
+      - name: Confirm non-root runtime user
+        run: test "$(docker image inspect blockops:ci --format '{{.Config.User}}')" = "10001:10001"

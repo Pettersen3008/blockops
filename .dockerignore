@@ -1,0 +1,10 @@
+.git
+.github
+.env
+runtime
+frontend/node_modules
+frontend/dist
+backend/internal/webui/dist/assets
+*.db
+coverage
+

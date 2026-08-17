@@ -1,0 +1,525 @@
+openapi: 3.1.0
+info:
+  title: BlockOps API
+  version: 0.1.0
+  summary: A constrained management API for one Dockerized Minecraft Java server.
+  description: |
+    BlockOps accepts Minecraft commands only through RCON. It has no host-shell,
+    Docker exec, or arbitrary file-management endpoint. Cookie-authenticated
+    mutations require `X-CSRF-Token` and backend role authorization.
+servers:
+  - url: /
+security:
+  - cookieAuth: []
+tags:
+  - name: Authentication
+  - name: Monitoring
+  - name: Console
+  - name: Players
+  - name: Backups
+  - name: Worlds
+  - name: Administration
+paths:
+  /api/v1/health:
+    get:
+      tags: [Monitoring]
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Process is accepting requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, product]
+                properties:
+                  status: { const: ok }
+                  product: { type: string }
+  /api/v1/setup:
+    get:
+      tags: [Authentication]
+      operationId: setupStatus
+      security: []
+      responses:
+        "200":
+          description: Whether the one-time administrator setup remains open.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [required]
+                properties:
+                  required: { type: boolean }
+    post:
+      tags: [Authentication]
+      operationId: createInitialAdministrator
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "201": { $ref: "#/components/responses/Session" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/session:
+    get:
+      tags: [Authentication]
+      operationId: currentSession
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Session revoked and cookie cleared. }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/overview:
+    get:
+      tags: [Monitoring]
+      operationId: overview
+      responses:
+        "200":
+          description: Live values and explicit per-integration availability.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Overview" }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/console/history:
+    get:
+      tags: [Console]
+      operationId: consoleHistory
+      responses:
+        "200":
+          description: Up to 1,000 sanitized lines from the bounded server buffer.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lines]
+                properties:
+                  lines:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleLine" }
+  /api/v1/console/ws:
+    get:
+      tags: [Console]
+      operationId: liveConsole
+      summary: Upgrade to a same-origin WebSocket for new console lines.
+      responses:
+        "101": { description: WebSocket upgrade accepted. }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/console/commands:
+    post:
+      tags: [Console]
+      operationId: executeMinecraftCommand
+      description: Operator or administrator. The value is sent to RCON and never interpreted as a shell command.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: { type: string, minLength: 1, maxLength: 4096 }
+      responses:
+        "200":
+          description: RCON response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [response]
+                properties:
+                  response: { type: string }
+        "403": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /api/v1/players:
+    get:
+      tags: [Players]
+      operationId: players
+      responses:
+        "200":
+          description: Known and online players with vanilla access flags.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [players]
+                properties:
+                  players:
+                    type: array
+                    items: { $ref: "#/components/schemas/Player" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/players/actions:
+    post:
+      tags: [Players]
+      operationId: playerAction
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, name, reason]
+              properties:
+                action:
+                  enum: [allowlist-add, allowlist-remove, kick, ban, pardon, op, deop]
+                name: { type: string, pattern: "^[A-Za-z0-9_]{1,16}$" }
+                reason: { type: string, maxLength: 160 }
+      responses:
+        "200": { description: RCON action completed. }
+        "403": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /api/v1/backups:
+    get:
+      tags: [Backups]
+      operationId: backups
+      responses:
+        "200":
+          description: Local backup catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [backups]
+                properties:
+                  backups:
+                    type: array
+                    items: { $ref: "#/components/schemas/Backup" }
+    post:
+      tags: [Backups]
+      operationId: createBackup
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "201":
+          description: Consistent backup created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/backups/{id}:
+    delete:
+      tags: [Backups]
+      operationId: deleteBackup
+      parameters:
+        - { $ref: "#/components/parameters/BackupID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      responses:
+        "204": { description: Archive and catalog record deleted. }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/backups/{id}/download:
+    get:
+      tags: [Backups]
+      operationId: downloadBackup
+      parameters: [{ $ref: "#/components/parameters/BackupID" }]
+      responses:
+        "200":
+          description: Backup tar.gz attachment. Operator or administrator.
+          content:
+            application/gzip: { schema: { type: string, contentEncoding: binary } }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/backups/{id}/restore:
+    post:
+      tags: [Backups]
+      operationId: restoreBackup
+      description: Administrator only.
+      parameters:
+        - { $ref: "#/components/parameters/BackupID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      responses:
+        "200": { description: Backup restored and container started. }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/world/download:
+    get:
+      tags: [Worlds]
+      operationId: downloadWorld
+      responses:
+        "200":
+          description: Consistent world tar.gz attachment. Operator or administrator.
+          content:
+            application/gzip: { schema: { type: string, contentEncoding: binary } }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/world:
+    put:
+      tags: [Worlds]
+      operationId: replaceWorld
+      description: Administrator only. The request body is a bounded ZIP with exactly one world.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/zip: { schema: { type: string, contentEncoding: binary } }
+      responses:
+        "200": { description: World replaced with rollback protection. }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/server/actions:
+    post:
+      tags: [Administration]
+      operationId: serverAction
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { enum: [start, stop, restart] }
+      responses:
+        "202": { description: Fixed-container action accepted. }
+        "403": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/audit:
+    get:
+      tags: [Administration]
+      operationId: auditLog
+      description: Administrator only.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: Most recent audit events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+  /api/v1/users:
+    get:
+      tags: [Administration]
+      operationId: users
+      description: Administrator only.
+      responses:
+        "200":
+          description: Dashboard users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users: { type: array, items: { $ref: "#/components/schemas/User" } }
+    post:
+      tags: [Administration]
+      operationId: createUser
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: "#/components/schemas/Credentials" }
+                - type: object
+                  required: [role]
+                  properties:
+                    role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "201":
+          description: User created.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/User" } }
+  /api/v1/users/{id}:
+    delete:
+      tags: [Administration]
+      operationId: disableUser
+      parameters:
+        - { $ref: "#/components/parameters/UserID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      responses:
+        "204": { description: User disabled and sessions revoked. }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/users/{id}/revoke-sessions:
+    post:
+      tags: [Administration]
+      operationId: revokeUserSessions
+      parameters:
+        - { $ref: "#/components/parameters/UserID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      responses:
+        "204": { description: Active sessions revoked. }
+  /api/v1/settings:
+    get:
+      tags: [Administration]
+      operationId: settings
+      description: Administrator only. Secret values are never returned.
+      responses:
+        "200": { description: Deployment and RCON status. }
+  /api/v1/settings/rcon:
+    put:
+      tags: [Administration]
+      operationId: updateRCON
+      description: Administrator only. Requires an external encryption key.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address, password]
+              properties:
+                address: { type: string, examples: ["minecraft:25575"] }
+                password: { type: string, minLength: 8, maxLength: 256, writeOnly: true }
+      responses:
+        "200": { description: Encrypted credentials updated; password omitted. }
+        "422": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: blockops_session
+  parameters:
+    CSRF:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string }
+    BackupID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-f0-9]{32}$" }
+    UserID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Stable error envelope.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Session:
+      description: Authenticated session. The opaque session token is only in the HttpOnly cookie.
+      headers:
+        Set-Cookie: { schema: { type: string } }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Session" }
+  schemas:
+    Role:
+      type: string
+      enum: [administrator, operator, viewer]
+    Credentials:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 32 }
+        password: { type: string, minLength: 12, maxLength: 256, writeOnly: true }
+    User:
+      type: object
+      required: [id, username, role, disabled, createdAt]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        disabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    Session:
+      type: object
+      required: [user, csrfToken, expiresAt]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        csrfToken: { type: string, description: Required in the X-CSRF-Token header for mutations. }
+        expiresAt: { type: string, format: date-time }
+    ConsoleLine:
+      type: object
+      required: [sequence, timestamp, text]
+      properties:
+        sequence: { type: integer }
+        timestamp: { type: string, format: date-time }
+        text: { type: string, maxLength: 8193 }
+    Player:
+      type: object
+      required: [name, online, allowlisted, banned, operator]
+      properties:
+        name: { type: string }
+        uuid: { type: string }
+        online: { type: boolean }
+        allowlisted: { type: boolean }
+        banned: { type: boolean }
+        operator: { type: boolean }
+    Backup:
+      type: object
+      required: [id, sizeBytes, createdAt, createdBy, status]
+      properties:
+        id: { type: string }
+        sizeBytes: { type: integer }
+        createdAt: { type: string, format: date-time }
+        createdBy: { type: string }
+        status: { type: string }
+    AuditEvent:
+      type: object
+      required: [id, occurredAt, action, target, sourceIp, outcome]
+      properties:
+        id: { type: string }
+        occurredAt: { type: string, format: date-time }
+        userId: { type: string }
+        username: { type: string }
+        action: { type: string }
+        target: { type: string }
+        sourceIp: { type: string }
+        outcome: { enum: [success, failure, denied] }
+        details: { type: object, additionalProperties: true }
+    Overview:
+      type: object
+      description: Availability wrappers omit value and include message when an integration cannot report a metric.
+      required: [server, metrics, disk, players, recentWarnings]
+      properties:
+        server: { $ref: "#/components/schemas/Availability" }
+        metrics: { $ref: "#/components/schemas/Availability" }
+        disk: { $ref: "#/components/schemas/Availability" }
+        players: { $ref: "#/components/schemas/Availability" }
+        recentWarnings: { type: array, items: { $ref: "#/components/schemas/ConsoleLine" } }
+        lastSuccessfulBackup: { $ref: "#/components/schemas/Backup" }
+    Availability:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+        value: { type: object, additionalProperties: true }
+        message: { type: string }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
