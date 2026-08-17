@@ -42,6 +42,13 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
   await expect(page.getByText("connected", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Minecraft command")).toBeVisible();
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.getByRole("log")).toHaveAttribute("aria-live", "off");
+  await page.getByRole("button", { name: "Return to live output" }).click();
+  await expect(page.getByRole("log")).toHaveAttribute("aria-live", "polite");
+  await page.getByLabel("Minecraft command").fill("say BlockOps browser check");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Minecraft did not accept the command.")).toBeVisible();
 
   await page.getByRole("link", { name: "Players", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();

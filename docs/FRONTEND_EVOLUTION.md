@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-13`
-- Last completed checkpoint: `FE-12`
-- Next action: inventory the Console HTTP/WebSocket contracts, then add validated bounded history and reconnect lifecycle behavior
+- Active checkpoint: `FE-14`
+- Last completed checkpoint: `FE-13`
+- Next action: inventory legacy UI/style imports, then migrate shared compositions and add lint, boundary, cycle, unused-code, and React Doctor gates
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -29,8 +29,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-10` | complete | `refactor(frontend): migrate players feature [FE-10]` |
 | `FE-11` | complete | `refactor(frontend): migrate audit feature [FE-11]` |
 | `FE-12` | complete | `refactor(frontend): migrate settings feature [FE-12]` |
-| `FE-13` | in progress | `refactor(frontend): migrate console feature [FE-13]` |
-| `FE-14` | not started | `refactor(frontend): remove legacy boundaries [FE-14]` |
+| `FE-13` | complete | `refactor(frontend): migrate console feature [FE-13]` |
+| `FE-14` | in progress | `refactor(frontend): remove legacy boundaries [FE-14]` |
 | `FE-15` | not started | `docs(frontend): complete frontend evolution [FE-15]` |
 
 ### FE-01 baseline evidence
@@ -120,6 +120,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Settings forms reuse Auth’s public username, role, UTF-8 byte length, and strong-password rules. RCON host/port and password validation and user-creation errors are associated with their fields; malformed response content is replaced by the shared safe error.
 - RCON updates invalidate Settings and Overview, user mutations invalidate the user catalog, and revoking the current user also invalidates the session. Administrator permission enforcement remains at the route boundary, and user disable/revoke confirmation behavior is preserved.
 - Nineteen test files and all 45 tests pass, including exact CSRF mutation requests, field validation, user disable confirmation, post-update invalidation, and malformed deployment rejection. Typecheck, production build, `npm audit --audit-level=high`, and the full production-embedded Playwright administrator/viewer journey pass.
+
+### FE-13 verification
+
+- `features/console` owns validated HTTP history, WebSocket line and command-response schemas, API functions, key factory, hooks, bounded line merging, reconnect transport, and the lazy route page. The final legacy global API/type modules and Console page were deleted.
+- The WebSocket accepts only parsed text messages, transitions through explicit connection states, reconnects with capped 500 ms–10 second exponential backoff, and clears timers and handlers on cleanup. HTTP history is capped at 1,000 lines and the deduplicated combined client history at 2,000.
+- Pause now freezes a snapshot while valid live messages continue buffering; resume reveals the latest bounded view. Search and severity filters, auto-scroll, 50-command history, safe RCON response/error state, role controls, and Console/Overview/Players invalidation are preserved.
+- Twenty-three test files and all 54 tests pass, covering malformed socket/history data, reconnect cleanup/backoff, bounds and deduplication, pause buffering, filters, permissions, exact command CSRF, and command history. Typecheck, production build, `npm audit --audit-level=high`, and the expanded production-embedded Playwright pause/resume and safe command-failure journey pass.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 

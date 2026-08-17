@@ -1,4 +1,4 @@
-import { ConsolePage } from "@/pages/ConsolePage";
+import { ConsolePage } from "@/features/console";
 import { PermissionBoundary } from "../PermissionBoundary";
 import { useRouteSession } from "../useRouteSession";
 
