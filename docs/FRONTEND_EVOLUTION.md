@@ -5,10 +5,10 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-01`
-- Last completed checkpoint: `FE-00`
-- Next action: run the baseline type, test, build, bundle-size, and production browser checks
-- Last green verification: not run; baseline verification is `FE-01`
+- Active checkpoint: `FE-02`
+- Last completed checkpoint: `FE-01`
+- Next action: replace the Vite application build with an equivalent Rsbuild configuration
+- Last green verification: 2026-08-17 — `make test`, `npm run build`, and the production Playwright smoke journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
 
@@ -17,8 +17,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | Checkpoint | Status | Commit subject |
 | --- | --- | --- |
 | `FE-00` | complete | `chore: establish BlockOps MVP baseline [FE-00]` |
-| `FE-01` | in progress | `docs(frontend): record refactor baseline [FE-01]` |
-| `FE-02` | not started | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
+| `FE-01` | complete | `docs(frontend): record refactor baseline [FE-01]` |
+| `FE-02` | in progress | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
 | `FE-03` | not started | `style(frontend): establish UI foundation [FE-03]` |
 | `FE-04` | not started | `refactor(frontend): extract application providers [FE-04]` |
 | `FE-05` | not started | `refactor(frontend): introduce data router and shell [FE-05]` |
@@ -32,6 +32,15 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-13` | not started | `refactor(frontend): migrate console feature [FE-13]` |
 | `FE-14` | not started | `refactor(frontend): remove legacy boundaries [FE-14]` |
 | `FE-15` | not started | `docs(frontend): complete frontend evolution [FE-15]` |
+
+### FE-01 baseline evidence
+
+- Tests: all Go race tests passed; both Vitest files and all four unit tests passed.
+- Production build: `index.html` 497 bytes, JavaScript 292,406 bytes / 88.46 kB gzip, and CSS 27,003 bytes / 6.42 kB gzip.
+- Browser journey: the production-embedded Playwright smoke test passed first-run setup, integration-unavailable states, confirmation cancellation, console connection, player error recovery, empty backups, audit data, settings, and mobile navigation.
+- Theme and layout: light background `rgb(243, 245, 242)`, dark background `rgb(15, 20, 17)`, and no horizontal overflow at 390 by 844 pixels.
+- Keyboard: the primary navigation buttons are sequentially reachable and expose `:focus-visible`.
+- Visual baseline policy: no screenshots are retained; later checkpoints compare these observable behaviors, semantic tokens, and bundle measurements.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
