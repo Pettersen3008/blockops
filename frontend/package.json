@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "rsbuild dev",
+    "build": "tsc -b && rsbuild build",
     "test:e2e": "playwright test",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run src",
@@ -19,11 +19,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@rsbuild/core": "^2.1.13",
+    "@rsbuild/plugin-react": "^2.1.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.0.5",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }

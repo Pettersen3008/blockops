@@ -5,10 +5,10 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-02`
-- Last completed checkpoint: `FE-01`
-- Next action: replace the Vite application build with an equivalent Rsbuild configuration
-- Last green verification: 2026-08-17 — `make test`, `npm run build`, and the production Playwright smoke journey passed
+- Active checkpoint: `FE-03`
+- Last completed checkpoint: `FE-02`
+- Next action: configure Tailwind CSS v4, shadcn Base UI, semantic tokens, and local variable fonts
+- Last green verification: 2026-08-17 — typecheck, unit tests, Rsbuild production build, dependency audit, development-proxy Playwright, and production-embedded Playwright passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
 
@@ -18,8 +18,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | --- | --- | --- |
 | `FE-00` | complete | `chore: establish BlockOps MVP baseline [FE-00]` |
 | `FE-01` | complete | `docs(frontend): record refactor baseline [FE-01]` |
-| `FE-02` | in progress | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
-| `FE-03` | not started | `style(frontend): establish UI foundation [FE-03]` |
+| `FE-02` | complete | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
+| `FE-03` | in progress | `style(frontend): establish UI foundation [FE-03]` |
 | `FE-04` | not started | `refactor(frontend): extract application providers [FE-04]` |
 | `FE-05` | not started | `refactor(frontend): introduce data router and shell [FE-05]` |
 | `FE-06` | not started | `refactor(frontend): validate and isolate authentication [FE-06]` |
@@ -41,6 +41,14 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Theme and layout: light background `rgb(243, 245, 242)`, dark background `rgb(15, 20, 17)`, and no horizontal overflow at 390 by 844 pixels.
 - Keyboard: the primary navigation buttons are sequentially reachable and expose `:focus-visible`.
 - Visual baseline policy: no screenshots are retained; later checkpoints compare these observable behaviors, semantic tokens, and bundle measurements.
+
+### FE-02 verification
+
+- Rsbuild 2.1.13 produces the static `dist/` bundle in 0.16 seconds and preserves the Docker/Go embedding contract.
+- Development and production Playwright journeys both pass, including the `/api` HTTP proxy and console WebSocket upgrade.
+- Rsbuild defaults to changing proxy origins, which the backend correctly rejects for WebSockets. `changeOrigin: false` is therefore explicit to preserve the Vite behavior and BlockOps origin checks.
+- Total production output is 323.2 kB raw / 97.1 kB gzip, approximately two percent above the FE-01 gzip baseline and below the ten-percent investigation threshold.
+- `npm audit --audit-level=high` reports zero vulnerabilities.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
