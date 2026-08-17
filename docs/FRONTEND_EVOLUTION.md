@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-05`
-- Last completed checkpoint: `FE-04`
-- Next action: install React Router v6.30 and replace manual history routing with a static nested data router and lazy route modules
+- Active checkpoint: `FE-06`
+- Last completed checkpoint: `FE-05`
+- Next action: add Zod and DOM test support, then migrate setup/login/session/logout, permission rules, schemas, and hooks into `features/auth`
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -21,8 +21,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-02` | complete | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
 | `FE-03` | complete | `style(frontend): establish UI foundation [FE-03]` |
 | `FE-04` | complete | `refactor(frontend): extract application providers [FE-04]` |
-| `FE-05` | in progress | `refactor(frontend): introduce data router and shell [FE-05]` |
-| `FE-06` | not started | `refactor(frontend): validate and isolate authentication [FE-06]` |
+| `FE-05` | complete | `refactor(frontend): introduce data router and shell [FE-05]` |
+| `FE-06` | in progress | `refactor(frontend): validate and isolate authentication [FE-06]` |
 | `FE-07` | not started | `refactor(frontend): migrate overview feature [FE-07]` |
 | `FE-08` | not started | `refactor(frontend): migrate backups feature [FE-08]` |
 | `FE-09` | not started | `refactor(frontend): migrate worlds feature [FE-09]` |
@@ -64,6 +64,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - `QueryProvider` preserves the existing query defaults, `ThemeProvider` preserves the `blockops-theme` storage key and system-theme fallback, and `AppProviders` is the single provider composition boundary.
 - `bootstrap.tsx` now owns root discovery, Strict Mode, providers, and rendering; `App.tsx` is composition-only while the manual router remains unchanged for FE-05.
 - Typecheck, all four unit tests, the Rsbuild production build, and the production-embedded Playwright journey pass.
+
+### FE-05 verification
+
+- React Router DOM 6.30.3 now owns a statically created browser data router with an authentication boundary, nested application shell, `Outlet` context, permission boundary, route error UI, not-found UI, `NavLink` navigation, and seven lazy route modules. `/` replaces to `/overview`.
+- The production journey refreshes every application route directly, verifies the Go SPA fallback returns 200, checks the not-found route, confirms the default route, and signs in as a viewer to verify a restricted direct route. Existing setup, feature, WebSocket, mobile, and error/empty-state checks still pass.
+- The `/overview` initial route is 121.6 kB gzip for JavaScript and CSS, 28.2% above FE-01. Investigation attributes 21.4 kB to the required React Router runtime and 9.8 kB to the FE-03 Tailwind foundation; feature pages are now split into 1.9–4.3 kB gzip route chunks. The temporary overhead is accepted and remains scheduled for comparison after legacy cleanup.
+- `npm audit --audit-level=high` passes. npm reports three moderate React Router advisories with no v6 fix; the available fix requires v7, which is explicitly out of scope. BlockOps uses only static internal navigation targets, no untrusted redirects, and no SSR hydration, limiting exposure until the plan permits a major upgrade.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
