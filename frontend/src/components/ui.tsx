@@ -109,14 +109,22 @@ export function ErrorState({
 export function Field({
   label,
   hint,
+  hintId,
+  hintIsError = false,
   htmlFor,
   children,
-}: PropsWithChildren<{ label: string; hint?: string; htmlFor: string }>) {
+}: PropsWithChildren<{
+  label: string;
+  hint?: string;
+  hintId?: string;
+  hintIsError?: boolean;
+  htmlFor: string;
+}>) {
   return (
     <div className="field">
       <label htmlFor={htmlFor}>{label}</label>
       {children}
-      {hint ? <p className="field__hint">{hint}</p> : null}
+      {hint ? <p id={hintId} className="field__hint" role={hintIsError ? "alert" : undefined}>{hint}</p> : null}
     </div>
   );
 }

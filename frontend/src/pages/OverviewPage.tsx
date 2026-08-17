@@ -25,8 +25,8 @@ import {
   StatusPill,
 } from "../components/ui";
 import { formatBytes, formatDate, formatDuration } from "../formatters";
-import type { Session } from "../types";
-import { hasPermission } from "../types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
 
 type PendingAction = "backup" | "start" | "stop" | "restart" | null;
 

@@ -4,7 +4,7 @@ import { Cable, KeyRound, LockKeyhole, Plus, ServerCog, ShieldCheck, UserRoundCo
 import { api, errorMessage } from "../api";
 import { Button, Card, ConfirmDialog, EmptyState, ErrorState, Field, LoadingState, Notice, PageHeader, StatusPill } from "../components/ui";
 import { formatBytes, formatDate } from "../formatters";
-import type { Role, Session, User } from "../types";
+import type { Role, Session, User } from "@/features/auth";
 
 type UserIntent = { type: "disable" | "revoke"; user: User } | null;
 

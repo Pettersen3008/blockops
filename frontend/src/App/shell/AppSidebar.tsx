@@ -2,10 +2,10 @@ import { CircleUserRound, LogOut, ShieldCheck, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui";
 import { PRODUCT_NAME } from "@/config";
-import type { Session } from "@/types";
-import { hasPermission } from "@/types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
 import { navigation } from "@/App/routing/routes";
-import { AppBrand } from "./AppBrand";
+import { AppBrand } from "@/components/common/AppBrand";
 
 export function AppSidebar({
   session,

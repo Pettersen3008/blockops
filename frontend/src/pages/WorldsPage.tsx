@@ -4,8 +4,8 @@ import { Download, FileArchive, ShieldAlert, Upload, X } from "lucide-react";
 import { api, errorMessage } from "../api";
 import { Button, Card, ConfirmDialog, Notice, PageHeader } from "../components/ui";
 import { formatBytes } from "../formatters";
-import type { Session } from "../types";
-import { hasPermission } from "../types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
 
 export function WorldsPage({ session }: { session: Session }) {
   const queryClient = useQueryClient();

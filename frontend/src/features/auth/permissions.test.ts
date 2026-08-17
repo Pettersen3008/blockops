@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasPermission } from "./types";
+import { hasPermission } from "./permissions";
 
 describe("dashboard role policy", () => {
   it("keeps world replacement and restore administrator-only", () => {
@@ -15,4 +15,3 @@ describe("dashboard role policy", () => {
     expect(hasPermission("viewer", "console.execute")).toBe(false);
   });
 });
-

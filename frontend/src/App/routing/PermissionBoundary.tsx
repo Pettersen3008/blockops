@@ -1,7 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
-import { hasPermission } from "@/types";
-import type { Permission } from "@/types";
+import { hasPermission } from "@/features/auth";
+import type { Permission } from "@/features/auth";
 import { useRouteSession } from "./useRouteSession";
 
 export function PermissionBoundary({

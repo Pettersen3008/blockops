@@ -4,26 +4,10 @@ import type {
   ConsoleLine,
   OverviewData,
   Player,
-  Role,
-  Session,
   SettingsData,
-  User,
 } from "./types";
-
-interface ErrorBody {
-  error?: { code?: string; message?: string };
-}
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly code: string;
-
-  constructor(status: number, code: string, message: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+import type { Role, User } from "@/features/auth";
+import { ApiError, apiErrorFromResponse, safeErrorMessage } from "@/lib/api/ApiError";
 
 async function request<T>(
   path: string,
@@ -38,44 +22,13 @@ async function request<T>(
   if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
   const response = await fetch(path, { ...init, headers, credentials: "same-origin" });
   if (!response.ok) {
-    let body: ErrorBody = {};
-    try {
-      body = (await response.json()) as ErrorBody;
-    } catch {
-      // A stable fallback keeps proxy errors understandable.
-    }
-    throw new ApiError(
-      response.status,
-      body.error?.code ?? "request_failed",
-      body.error?.message ?? `Request failed with status ${response.status}.`,
-    );
+    throw await apiErrorFromResponse(response);
   }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 export const api = {
-  setupStatus: () => request<{ required: boolean }>("/api/v1/setup"),
-  setup: (username: string, password: string) =>
-    request<Session>("/api/v1/setup", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
-  login: (username: string, password: string) =>
-    request<Session>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
-  session: async () => {
-    try {
-      return await request<Session>("/api/v1/auth/session");
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) return null;
-      throw error;
-    }
-  },
-  logout: (csrf: string) =>
-    request<void>("/api/v1/auth/logout", { method: "POST" }, csrf),
   overview: () => request<OverviewData>("/api/v1/overview"),
   consoleHistory: () =>
     request<{ lines: ConsoleLine[] }>("/api/v1/console/history"),
@@ -116,12 +69,7 @@ export const api = {
       body: file,
     });
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as ErrorBody;
-      throw new ApiError(
-        response.status,
-        body.error?.code ?? "world_replace_failed",
-        body.error?.message ?? "World replacement failed.",
-      );
+      throw await apiErrorFromResponse(response);
     }
   },
   serverAction: (csrf: string, action: "start" | "stop" | "restart") =>
@@ -156,6 +104,7 @@ export const api = {
 };
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Something went wrong.";
+  return safeErrorMessage(error);
 }
 
+export { ApiError };

@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-06`
-- Last completed checkpoint: `FE-05`
-- Next action: add Zod and DOM test support, then migrate setup/login/session/logout, permission rules, schemas, and hooks into `features/auth`
+- Active checkpoint: `FE-07`
+- Last completed checkpoint: `FE-06`
+- Next action: migrate Overview schemas, query polling, server actions, unavailable states, confirmation behavior, and the narrow backup-creation hook
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -22,8 +22,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-03` | complete | `style(frontend): establish UI foundation [FE-03]` |
 | `FE-04` | complete | `refactor(frontend): extract application providers [FE-04]` |
 | `FE-05` | complete | `refactor(frontend): introduce data router and shell [FE-05]` |
-| `FE-06` | in progress | `refactor(frontend): validate and isolate authentication [FE-06]` |
-| `FE-07` | not started | `refactor(frontend): migrate overview feature [FE-07]` |
+| `FE-06` | complete | `refactor(frontend): validate and isolate authentication [FE-06]` |
+| `FE-07` | in progress | `refactor(frontend): migrate overview feature [FE-07]` |
 | `FE-08` | not started | `refactor(frontend): migrate backups feature [FE-08]` |
 | `FE-09` | not started | `refactor(frontend): migrate worlds feature [FE-09]` |
 | `FE-10` | not started | `refactor(frontend): migrate players feature [FE-10]` |
@@ -71,6 +71,14 @@ At the start of each work session, read this tracker, then run `git status --sho
 - The production journey refreshes every application route directly, verifies the Go SPA fallback returns 200, checks the not-found route, confirms the default route, and signs in as a viewer to verify a restricted direct route. Existing setup, feature, WebSocket, mobile, and error/empty-state checks still pass.
 - The `/overview` initial route is 121.6 kB gzip for JavaScript and CSS, 28.2% above FE-01. Investigation attributes 21.4 kB to the required React Router runtime and 9.8 kB to the FE-03 Tailwind foundation; feature pages are now split into 1.9–4.3 kB gzip route chunks. The temporary overhead is accepted and remains scheduled for comparison after legacy cleanup.
 - `npm audit --audit-level=high` passes. npm reports three moderate React Router advisories with no v6 fix; the available fix requires v7, which is explicitly out of scope. BlockOps uses only static internal navigation targets, no untrusted redirects, and no SSR hydration, limiting exposure until the plan permits a major upgrade.
+
+### FE-06 verification
+
+- Zod 4.4.3 schemas are now the source of truth for setup status, credentials, roles, users, and sessions. Setup password validation mirrors the Go backend’s UTF-8 byte bounds and Unicode character categories.
+- `features/auth` owns setup/login/session/logout APIs, key factories, query and mutation hooks, forms, permission rules, and its authentication boundary. Other code imports only its explicit public API; the former auth definitions and methods were removed from global `types.ts` and `api.ts`.
+- The shared HTTP client parses successful payloads before returning them and turns unreadable or schema-invalid payloads into a fixed `ApiError`. Error envelopes are length-, character-, and code-validated; arbitrary thrown errors and malformed bodies are never rendered.
+- Vitest now has jsdom, Testing Library, user-event, and jest-dom support with explicit per-test cleanup. Five test files and all 11 tests pass, covering auth schemas, form behavior, permissions, malformed transport responses, and existing formatting behavior.
+- Typecheck, the Rsbuild production build, `npm audit --audit-level=high`, and the full production-embedded Playwright setup/login/logout/permission journey pass. The three previously documented moderate Router v6 advisories remain unchanged.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 

@@ -4,8 +4,9 @@ import { Archive, Download, History, RotateCcw, Trash2 } from "lucide-react";
 import { api, errorMessage } from "../api";
 import { Button, Card, ConfirmDialog, EmptyState, ErrorState, LoadingState, Notice, PageHeader, StatusPill } from "../components/ui";
 import { formatBytes, formatDate } from "../formatters";
-import type { Backup, Session } from "../types";
-import { hasPermission } from "../types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
+import type { Backup } from "../types";
 
 type BackupIntent = { type: "create" } | { type: "delete" | "restore"; backup: Backup } | null;
 

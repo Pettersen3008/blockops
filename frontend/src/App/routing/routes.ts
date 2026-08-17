@@ -8,7 +8,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { Permission } from "@/types";
+import type { Permission } from "@/features/auth";
 
 export interface NavigationItem {
   path: string;

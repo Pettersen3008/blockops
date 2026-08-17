@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { AuthenticationBoundary } from "./AuthenticationBoundary";
+import { AuthenticationBoundary } from "@/features/auth";
 import { NotFoundPage } from "./NotFoundPage";
 import { RouteErrorPage } from "./RouteErrorPage";
 import { AppShell } from "../shell/AppShell";

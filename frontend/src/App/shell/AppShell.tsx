@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router-dom";
-import { api } from "@/api";
 import { useRouteSession } from "@/App/routing/useRouteSession";
+import { useLogoutMutation } from "@/features/auth";
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
 
@@ -10,15 +9,7 @@ export function AppShell() {
   const session = useRouteSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const queryClient = useQueryClient();
-  const logout = useMutation({
-    mutationFn: () => api.logout(session.csrfToken),
-    onSettled: () => {
-      queryClient.clear();
-      window.history.replaceState({}, "", "/overview");
-      window.location.reload();
-    },
-  });
+  const logout = useLogoutMutation(session.csrfToken);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });

@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, Crown, Search, ShieldCheck, UserMinus, UserPlus, UsersRound } from "lucide-react";
 import { api, errorMessage } from "../api";
 import { Button, Card, EmptyState, ErrorState, Field, LoadingState, Modal, Notice, PageHeader, StatusPill } from "../components/ui";
-import type { Player, Session } from "../types";
-import { hasPermission } from "../types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
+import type { Player } from "../types";
 
 type PlayerAction = "allowlist-add" | "allowlist-remove" | "kick" | "ban" | "pardon" | "op" | "deop";
 

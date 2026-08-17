@@ -12,8 +12,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, CirclePause, CirclePlay, Search, Send, TerminalSquare } from "lucide-react";
 import { api, errorMessage } from "../api";
 import { Button, ErrorState, LoadingState, Notice, PageHeader, StatusPill } from "../components/ui";
-import type { ConsoleLine, Session } from "../types";
-import { hasPermission } from "../types";
+import { hasPermission } from "@/features/auth";
+import type { Session } from "@/features/auth";
+import type { ConsoleLine } from "../types";
 
 type ConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";
 type LevelFilter = "all" | "warning" | "error";
