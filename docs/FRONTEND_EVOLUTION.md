@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-12`
-- Last completed checkpoint: `FE-11`
-- Next action: inventory the Settings API contracts, then add validated settings/user schemas and feature-owned queries and mutations
+- Active checkpoint: `FE-13`
+- Last completed checkpoint: `FE-12`
+- Next action: inventory the Console HTTP/WebSocket contracts, then add validated bounded history and reconnect lifecycle behavior
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -28,8 +28,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-09` | complete | `refactor(frontend): migrate worlds feature [FE-09]` |
 | `FE-10` | complete | `refactor(frontend): migrate players feature [FE-10]` |
 | `FE-11` | complete | `refactor(frontend): migrate audit feature [FE-11]` |
-| `FE-12` | in progress | `refactor(frontend): migrate settings feature [FE-12]` |
-| `FE-13` | not started | `refactor(frontend): migrate console feature [FE-13]` |
+| `FE-12` | complete | `refactor(frontend): migrate settings feature [FE-12]` |
+| `FE-13` | in progress | `refactor(frontend): migrate console feature [FE-13]` |
 | `FE-14` | not started | `refactor(frontend): remove legacy boundaries [FE-14]` |
 | `FE-15` | not started | `docs(frontend): complete frontend evolution [FE-15]` |
 
@@ -113,6 +113,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - `features/audit` owns the validated, 200-event-bounded catalog schema, API function, key factory, query hook, URL filter parsing, event matching, TanStack Table v9 model, and lazy route page. The legacy Audit page, DTO, and global endpoint were removed.
 - Search is restored from `q`; outcome is normalized and stored as `outcome=all|success|failure|denied`. Filtering remains client-side over the existing latest-200 API contract, with no server pagination.
 - Seventeen test files and all 38 tests pass, including schema bounds, malformed outcome handling, cross-field search, URL restoration and updates, and safe malformed-payload failure. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass; the journey reloads a filtered Audit URL and verifies its restored state.
+
+### FE-12 verification
+
+- `features/settings` owns validated RCON/deployment/user schemas, API functions, query keys and hooks, mutation invalidation, feature components, and the lazy route page. The legacy Settings page, DTO, and global endpoints were removed.
+- Settings forms reuse Auth’s public username, role, UTF-8 byte length, and strong-password rules. RCON host/port and password validation and user-creation errors are associated with their fields; malformed response content is replaced by the shared safe error.
+- RCON updates invalidate Settings and Overview, user mutations invalidate the user catalog, and revoking the current user also invalidates the session. Administrator permission enforcement remains at the route boundary, and user disable/revoke confirmation behavior is preserved.
+- Nineteen test files and all 45 tests pass, including exact CSRF mutation requests, field validation, user disable confirmation, post-update invalidation, and malformed deployment rejection. Typecheck, production build, `npm audit --audit-level=high`, and the full production-embedded Playwright administrator/viewer journey pass.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 

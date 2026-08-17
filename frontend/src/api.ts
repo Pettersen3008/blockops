@@ -1,8 +1,6 @@
 import type {
   ConsoleLine,
-  SettingsData,
 } from "./types";
-import type { Role, User } from "@/features/auth";
 import { ApiError, apiErrorFromResponse, safeErrorMessage } from "@/lib/api/ApiError";
 
 async function request<T>(
@@ -31,28 +29,6 @@ export const api = {
     request<{ response: string }>(
       "/api/v1/console/commands",
       { method: "POST", body: JSON.stringify({ command }) },
-      csrf,
-    ),
-  users: () => request<{ users: User[] }>("/api/v1/users"),
-  createUser: (csrf: string, username: string, password: string, role: Role) =>
-    request<User>(
-      "/api/v1/users",
-      { method: "POST", body: JSON.stringify({ username, password, role }) },
-      csrf,
-    ),
-  disableUser: (csrf: string, id: string) =>
-    request<void>(`/api/v1/users/${encodeURIComponent(id)}`, { method: "DELETE" }, csrf),
-  revokeSessions: (csrf: string, id: string) =>
-    request<void>(
-      `/api/v1/users/${encodeURIComponent(id)}/revoke-sessions`,
-      { method: "POST" },
-      csrf,
-    ),
-  settings: () => request<SettingsData>("/api/v1/settings"),
-  updateRCON: (csrf: string, address: string, password: string) =>
-    request<SettingsData["rcon"]>(
-      "/api/v1/settings/rcon",
-      { method: "PUT", body: JSON.stringify({ address, password }) },
       csrf,
     ),
 };

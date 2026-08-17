@@ -1,4 +1,4 @@
-import { SettingsPage } from "@/pages/SettingsPage";
+import { SettingsPage } from "@/features/settings";
 import { PermissionBoundary } from "../PermissionBoundary";
 import { useRouteSession } from "../useRouteSession";
 

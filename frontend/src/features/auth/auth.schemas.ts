@@ -27,9 +27,17 @@ export const usernameSchema = z.string().regex(
 
 const utf8Length = (value: string) => new TextEncoder().encode(value).length;
 
-const passwordSchema = z.string()
+export const passwordSchema = z.string()
   .min(1, "Password is required.")
   .refine((password) => utf8Length(password) <= 256, "Password must be at most 256 characters.");
+
+export const strongPasswordSchema = passwordSchema
+  .refine((password) => utf8Length(password) >= 12, "Password must be at least 12 characters.")
+  .refine((password) => {
+    const categories = [/\p{Ll}/u, /\p{Lu}/u, /\p{Nd}/u, /[^\p{Ll}\p{Lu}\p{Nd}]/u]
+      .filter((pattern) => pattern.test(password));
+    return categories.length >= 3;
+  }, "Password must use at least three of lowercase, uppercase, numbers, and symbols.");
 
 export const loginCredentialsSchema = z.object({
   username: usernameSchema,
@@ -38,13 +46,7 @@ export const loginCredentialsSchema = z.object({
 
 export const setupCredentialsSchema = z.object({
   username: usernameSchema,
-  password: passwordSchema
-    .refine((password) => utf8Length(password) >= 12, "Password must be at least 12 characters.")
-    .refine((password) => {
-      const categories = [/\p{Ll}/u, /\p{Lu}/u, /\p{Nd}/u, /[^\p{Ll}\p{Lu}\p{Nd}]/u]
-        .filter((pattern) => pattern.test(password));
-      return categories.length >= 3;
-    }, "Password must use at least three of lowercase, uppercase, numbers, and symbols."),
+  password: strongPasswordSchema,
 });
 
 export type Role = z.infer<typeof roleSchema>;
