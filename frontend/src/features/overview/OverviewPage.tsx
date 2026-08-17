@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Archive,
@@ -33,15 +32,12 @@ import { Unavailable } from "./components/Unavailable";
 import { confirmationFor } from "./overview.actions";
 import type { OverviewAction } from "./overview.actions";
 import { useOverview, useServerAction } from "./overview.hooks";
-import { overviewKeys } from "./overview.keys";
 import type { ServerState } from "./overview.schemas";
 
 export function OverviewPage({ session }: { session: Session }) {
-  const queryClient = useQueryClient();
   const [pendingAction, setPendingAction] = useState<OverviewAction | null>(null);
   const overview = useOverview();
   const backup = useCreateBackup(session.csrfToken, {
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: overviewKeys.all }),
     onSettled: () => setPendingAction(null),
   });
   const serverAction = useServerAction(session.csrfToken, () => setPendingAction(null));

@@ -4,7 +4,6 @@ import type {
   Player,
   SettingsData,
 } from "./types";
-import type { Backup } from "@/features/backups";
 import type { Role, User } from "@/features/auth";
 import { ApiError, apiErrorFromResponse, safeErrorMessage } from "@/lib/api/ApiError";
 
@@ -46,17 +45,6 @@ export const api = {
     request<{ response: string }>(
       "/api/v1/players/actions",
       { method: "POST", body: JSON.stringify({ action, name, reason }) },
-      csrf,
-    ),
-  backups: () => request<{ backups: Backup[] }>("/api/v1/backups"),
-  createBackup: (csrf: string) =>
-    request<Backup>("/api/v1/backups", { method: "POST" }, csrf),
-  deleteBackup: (csrf: string, id: string) =>
-    request<void>(`/api/v1/backups/${encodeURIComponent(id)}`, { method: "DELETE" }, csrf),
-  restoreBackup: (csrf: string, id: string) =>
-    request<{ status: string }>(
-      `/api/v1/backups/${encodeURIComponent(id)}/restore`,
-      { method: "POST" },
       csrf,
     ),
   replaceWorld: async (csrf: string, file: File) => {

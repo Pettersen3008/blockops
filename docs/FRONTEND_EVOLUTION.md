@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-08`
-- Last completed checkpoint: `FE-07`
-- Next action: complete the Backups feature with validated catalog/create/delete/restore hooks, confirmations, downloads, invalidation, tests, and removal of legacy backup code
+- Active checkpoint: `FE-09`
+- Last completed checkpoint: `FE-08`
+- Next action: migrate Worlds upload/download behavior, file state, validation, destructive confirmation, invalidation, permissions, and failure tests
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -24,8 +24,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-05` | complete | `refactor(frontend): introduce data router and shell [FE-05]` |
 | `FE-06` | complete | `refactor(frontend): validate and isolate authentication [FE-06]` |
 | `FE-07` | complete | `refactor(frontend): migrate overview feature [FE-07]` |
-| `FE-08` | in progress | `refactor(frontend): migrate backups feature [FE-08]` |
-| `FE-09` | not started | `refactor(frontend): migrate worlds feature [FE-09]` |
+| `FE-08` | complete | `refactor(frontend): migrate backups feature [FE-08]` |
+| `FE-09` | in progress | `refactor(frontend): migrate worlds feature [FE-09]` |
 | `FE-10` | not started | `refactor(frontend): migrate players feature [FE-10]` |
 | `FE-11` | not started | `refactor(frontend): migrate audit feature [FE-11]` |
 | `FE-12` | not started | `refactor(frontend): migrate settings feature [FE-12]` |
@@ -86,6 +86,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Overview retains unavailable messaging, clamped utilization meters, permission-aware actions, delayed server-state invalidation, and backup/server confirmation behavior. The legacy global Overview DTOs and API methods were removed.
 - `features/backups` now exposes the narrow validated backup schema and creation hook required by Overview. The legacy Backups page retains its existing create path only until FE-08 completes the feature in the immediately following checkpoint.
 - Eight test files and all 19 tests pass, including unavailable/invalid Overview payloads and confirmation cancellation. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass; Router’s three documented moderate advisories remain unchanged.
+
+### FE-08 verification
+
+- `features/backups` owns the catalog and restore-response schemas, API functions, key factory, create/delete/restore hooks, download URL, permissions-aware page, confirmation copy, and public API. Backup IDs are constrained to the backend’s 32-character hexadecimal contract and status to `ready`.
+- Successful mutations invalidate only the backup and Overview key prefixes. The Overview backup action consumes the same validated creation hook through the feature entry point, while Backups consumes the Overview key factory through its narrow `keys.ts` entry point.
+- The legacy page, global backup API methods, and transitional creation module were deleted. Downloads retain server authorization and encode the path segment.
+- Ten test files and all 23 tests pass, including validated deletion with CSRF, confirmation closure, safe malformed-catalog failure, and download URL encoding. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
