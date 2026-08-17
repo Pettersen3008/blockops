@@ -10,7 +10,7 @@ session — read it first, trust it over memory.
 |---|---|---|---|
 | FE-15 baseline + MSW | done | `0740168` | strict global MSW server |
 | FE-16 pnpm | done | `5fe95b7` | pnpm 11.7.0 via Corepack |
-| FE-17 rename + filename lint | todo | — | script the renames, do not hand-edit |
+| FE-17 rename + filename lint | done | `7e9266b` | scripted 103 path changes |
 | FE-18 api helper | todo | — | **gate:** needs D-1 decided |
 | FE-19 reference feature `players` | todo | — | **gate:** needs D-1/D-2/D-3 + human design review |
 | FE-20 `worlds` | todo | — | |
@@ -66,3 +66,15 @@ the start of every session and must stay cheap to load.
 - NOT verified: remote GitHub Actions execution; interactive `make dev-web`
 - Deleted: `frontend/package-lock.json` and npm commands from Docker, Make, and CI
 - Follow-ups found (not fixed): 5 moderate pnpm audit findings; user-owned README and SECURITY wording still says npm; Make build still needs explicit asset assembly
+
+### FE-17 — done — 2026-08-17
+- Changed: scripted 103 kebab-case path moves and 224 resolved import rewrites; added filename enforcement
+- Simplest design: one temporary migration script and one inline ESLint rule; no dependency added
+- Abstraction: source naming policy; 128 TypeScript files plus future files; removes manual review; adds 33 config lines
+- New files: none; existing files moved in place
+- State/cache: unchanged
+- Tests: assertions unchanged; existing 23 files/54 tests preserved
+- Verified: `pnpm verify` green; post-script tsc; 114-file content-diff proof; scratch lint failure; `git log --follow`; Playwright 1/1; embedded `/players`
+- NOT verified: remote GitHub Actions execution
+- Deleted: PascalCase/dot-namespaced paths; no code; `src/pages/` was already absent
+- Follow-ups found (not fixed): none
