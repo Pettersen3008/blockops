@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { HttpResponse, http } from "msw";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Session } from "@/features/auth";
 import { configureCsrfToken } from "@/lib/api/api";
+import { server } from "@/test/setup";
 import { PlayersPage } from "./players-page";
 
 const session: Session = {
@@ -23,60 +25,128 @@ const players = [
   { name: "Steve", online: true, allowlisted: true, banned: false, operator: false },
 ];
 
+const overviewQueryKey = ["overview", "detail"] as const;
+
 afterEach(() => {
   configureCsrfToken(() => undefined);
-  vi.unstubAllGlobals();
 });
 
-function renderPlayers(fetchMock: ReturnType<typeof vi.fn>, currentSession = session) {
-  vi.stubGlobal("fetch", fetchMock);
+function renderPlayers(currentSession = session) {
   configureCsrfToken(() => currentSession.csrfToken);
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
   render(
     <QueryClientProvider client={queryClient}>
       <PlayersPage session={currentSession} />
     </QueryClientProvider>,
   );
+
+  return queryClient;
 }
 
 describe("PlayersPage", () => {
-  it("searches players and submits a validated reason action", async () => {
+  it("searches players and invalidates players and overview after a validated kick", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
-      if (init?.method === "POST") {
-        return Promise.resolve(new Response(JSON.stringify({ response: "Banned Steve" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }));
-      }
-      return Promise.resolve(new Response(JSON.stringify({ players }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }));
-    });
-    renderPlayers(fetchMock);
+    const requests: unknown[] = [];
+    let csrfHeader: string | null = null;
+    let catalogRequests = 0;
+    server.use(
+      http.get("/api/v1/players", () => {
+        catalogRequests += 1;
+        return HttpResponse.json({ players });
+      }),
+      http.post("/api/v1/players/actions", async ({ request }) => {
+        requests.push(await request.json());
+        csrfHeader = request.headers.get("X-CSRF-Token");
+        return HttpResponse.json({ response: "Kicked Steve" });
+      }),
+    );
+    const queryClient = renderPlayers();
+    queryClient.setQueryData(overviewQueryKey, { status: "cached" });
 
     expect(await screen.findByRole("heading", { name: "Steve" })).toBeVisible();
     await user.type(screen.getByPlaceholderText("Search known players"), "ste");
     expect(screen.queryByRole("heading", { name: "Alex" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Ban" }));
-    expect(screen.getByRole("heading", { name: "Ban Steve?" })).toBeVisible();
-    await user.type(screen.getByLabelText("Reason (optional)"), "Repeated griefing");
-    await user.click(screen.getByRole("button", { name: "Ban player" }));
+    await user.click(screen.getByRole("button", { name: "Kick" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/players/actions",
-      expect.objectContaining({ method: "POST" }),
-    ));
-    const actionCall = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
-    expect(JSON.parse(String(actionCall?.[1]?.body))).toEqual({ action: "ban", name: "Steve", reason: "Repeated griefing" });
-    expect((actionCall?.[1]?.headers as Headers).get("X-CSRF-Token")).toBe("csrf-token");
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Kick Steve?" })).toBeVisible();
+    const reason = within(dialog).getByRole("textbox", { name: "Reason" });
+    expect(reason).toBeRequired();
+    await user.click(within(dialog).getByRole("button", { name: "Kick player" }));
+    expect(await within(dialog).findByText("Reason is required.")).toBeVisible();
+    expect(requests).toHaveLength(0);
+
+    await user.type(reason, "Repeated griefing");
+    await user.click(within(dialog).getByRole("button", { name: "Kick player" }));
+
+    await waitFor(() => expect(requests).toEqual([
+      { action: "kick", name: "Steve", reason: "Repeated griefing" },
+    ]));
+    expect(csrfHeader).toBe("csrf-token");
+    await waitFor(() => expect(catalogRequests).toBeGreaterThan(1));
+    await waitFor(() => expect(queryClient.getQueryState(overviewQueryKey)?.isInvalidated).toBe(true));
+  });
+
+  it("returns focus to the action trigger when the dialog closes", async () => {
+    const user = userEvent.setup();
+    server.use(http.get("/api/v1/players", () => HttpResponse.json({ players })));
+    renderPlayers();
+
+    const kick = await screen.findByRole("button", { name: "Kick" });
+    await user.click(kick);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(kick).toHaveFocus());
+  });
+
+  it("validates the allowlist form and clears it only after a successful action", async () => {
+    const user = userEvent.setup();
+    const requests: unknown[] = [];
+    server.use(
+      http.get("/api/v1/players", () => HttpResponse.json({ players })),
+      http.post("/api/v1/players/actions", async ({ request }) => {
+        requests.push(await request.json());
+        return HttpResponse.json({ response: "Allowlisted Herobrine" });
+      }),
+    );
+    renderPlayers();
+
+    await screen.findByRole("heading", { name: "Steve" });
+    const name = screen.getByRole("textbox", { name: "Add to allowlist" });
+    await user.type(name, "bad name");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Use a valid Java username with 1–16 letters, numbers, or underscores.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.clear(name);
+    await user.type(name, "Herobrine");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(screen.getByRole("heading", { name: "Allowlist Herobrine?" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(name).toHaveValue("Herobrine");
+
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add to allowlist" }));
+
+    await waitFor(() => expect(requests).toEqual([
+      { action: "allowlist-add", name: "Herobrine", reason: "" },
+    ]));
+    await waitFor(() => expect(name).toHaveValue(""));
   });
 
   it("rejects malformed catalog data safely", async () => {
-    renderPlayers(vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    server.use(http.get("/api/v1/players", () => HttpResponse.json({
       players: [{ ...players[0], name: "invalid player" }],
-    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    })));
+    renderPlayers();
 
     expect(await screen.findByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
     expect(screen.getByText("BlockOps returned an invalid response.")).toBeVisible();
@@ -84,13 +154,11 @@ describe("PlayersPage", () => {
   });
 
   it("keeps viewer controls read-only", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ players }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    renderPlayers(fetchMock, { ...session, user: { ...session.user, role: "viewer" } });
+    server.use(http.get("/api/v1/players", () => HttpResponse.json({ players })));
+    renderPlayers({ ...session, user: { ...session.user, role: "viewer" } });
 
     expect(await screen.findByText("Viewer access is read-only.")).toBeVisible();
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ban" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Add to allowlist")).not.toBeInTheDocument();
   });

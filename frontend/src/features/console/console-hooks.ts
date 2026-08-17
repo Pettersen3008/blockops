@@ -1,7 +1,5 @@
 import { startTransition, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { overviewKeys } from "@/features/overview/keys";
-import { playerKeys } from "@/features/players/keys";
 import { executeConsoleCommand, getConsoleHistory } from "./console-api";
 import { consoleKeys } from "./console-keys";
 import type { ConsoleLine } from "./console-schemas";
@@ -29,9 +27,7 @@ export function useExecuteConsoleCommand() {
   return useMutation({
     mutationFn: executeConsoleCommand,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: consoleKeys.all });
-      void queryClient.invalidateQueries({ queryKey: overviewKeys.all });
-      void queryClient.invalidateQueries({ queryKey: playerKeys.all });
+      void queryClient.invalidateQueries();
     },
   });
 }

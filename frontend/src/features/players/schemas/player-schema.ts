@@ -11,6 +11,8 @@ export const playerNameSchema = z.string().regex(
 );
 
 const reasonSchema = z.string()
+  .trim()
+  .min(1, "Reason is required.")
   .refine((reason) => utf8Length(reason) <= 160, "Reason must be at most 160 characters.")
   .refine((reason) => !hasLineBreakOrNull(reason), "Reason cannot contain line breaks.");
 

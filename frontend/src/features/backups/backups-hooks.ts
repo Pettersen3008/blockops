@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { overviewKeys } from "@/features/overview/keys";
 import { createBackup, deleteBackup, getBackups, restoreBackup } from "./backups-api";
 import { backupKeys } from "./backups-keys";
 
@@ -11,8 +10,7 @@ interface MutationCallbacks {
 function useBackupInvalidation() {
   const queryClient = useQueryClient();
   return () => {
-    void queryClient.invalidateQueries({ queryKey: backupKeys.all });
-    void queryClient.invalidateQueries({ queryKey: overviewKeys.all });
+    void queryClient.invalidateQueries();
   };
 }
 

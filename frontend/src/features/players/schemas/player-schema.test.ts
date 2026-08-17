@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { playerActionRequestSchema, playerCatalogSchema } from "./player-schemas";
+import { playerActionRequestSchema, playerCatalogSchema } from "./player-schema";
 
 const player = {
   name: "Steve",
@@ -17,6 +17,8 @@ describe("player contracts", () => {
 
   it("uses a discriminated action union with bounded reasons", () => {
     expect(playerActionRequestSchema.safeParse({ action: "ban", name: "Steve", reason: "Repeated griefing" }).success).toBe(true);
+    expect(playerActionRequestSchema.safeParse({ action: "kick", name: "Steve", reason: "" }).success).toBe(false);
+    expect(playerActionRequestSchema.safeParse({ action: "ban", name: "Steve", reason: "   " }).success).toBe(false);
     expect(playerActionRequestSchema.safeParse({ action: "op", name: "Steve", reason: "not allowed" }).success).toBe(false);
     expect(playerActionRequestSchema.safeParse({ action: "shell", name: "Steve", reason: "" }).success).toBe(false);
     expect(playerActionRequestSchema.safeParse({ action: "kick", name: "Steve", reason: "line one\nline two" }).success).toBe(false);
