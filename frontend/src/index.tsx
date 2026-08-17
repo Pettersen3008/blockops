@@ -1,25 +1,6 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { App } from "./App";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./App/styles/globals.css";
+import { bootstrap } from "./App/bootstrap";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 5_000, retry: 1, refetchOnWindowFocus: false },
-    mutations: { retry: 0 },
-  },
-});
-
-const root = document.getElementById("root");
-if (!root) throw new Error("BlockOps root element is missing.");
-
-createRoot(root).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+bootstrap();

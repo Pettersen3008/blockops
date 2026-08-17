@@ -22,18 +22,19 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { api, errorMessage } from "./api";
-import { PRODUCT_NAME } from "./config";
-import { AuditPage } from "./pages/AuditPage";
-import { BackupsPage } from "./pages/BackupsPage";
-import { ConsolePage } from "./pages/ConsolePage";
-import { OverviewPage } from "./pages/OverviewPage";
-import { PlayersPage } from "./pages/PlayersPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { WorldsPage } from "./pages/WorldsPage";
-import type { Permission, Session } from "./types";
-import { hasPermission } from "./types";
-import { Button, Field, LoadingState, Notice } from "./components/ui";
+import { api, errorMessage } from "@/api";
+import { Button, Field, LoadingState, Notice } from "@/components/ui";
+import { PRODUCT_NAME } from "@/config";
+import { AuditPage } from "@/pages/AuditPage";
+import { BackupsPage } from "@/pages/BackupsPage";
+import { ConsolePage } from "@/pages/ConsolePage";
+import { OverviewPage } from "@/pages/OverviewPage";
+import { PlayersPage } from "@/pages/PlayersPage";
+import { SettingsPage } from "@/pages/SettingsPage";
+import { WorldsPage } from "@/pages/WorldsPage";
+import type { Permission, Session } from "@/types";
+import { hasPermission } from "@/types";
+import { useTheme } from "@/App/providers/ThemeProvider";
 
 type RouteKey = "overview" | "console" | "players" | "worlds" | "backups" | "audit" | "settings";
 
@@ -74,7 +75,7 @@ function useRoute() {
   return [route, navigate] as const;
 }
 
-export function App() {
+export function Application() {
   const queryClient = useQueryClient();
   const setup = useQuery({ queryKey: ["setup"], queryFn: api.setupStatus, staleTime: Infinity });
   const session = useQuery({
@@ -116,11 +117,7 @@ export function App() {
 function Dashboard({ session }: { session: Session }) {
   const [route, navigate] = useRoute();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = window.localStorage.getItem("blockops-theme");
-    if (stored === "light" || stored === "dark") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
+  const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
   const logout = useMutation({
     mutationFn: () => api.logout(session.csrfToken),
@@ -130,11 +127,6 @@ function Dashboard({ session }: { session: Session }) {
       window.location.reload();
     },
   });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("blockops-theme", theme);
-  }, [theme]);
 
   const selected = navigation.find((item) => item.key === route) ?? navigation[0]!;
   const allowed = hasPermission(session.user.role, selected.permission);
@@ -191,7 +183,7 @@ function Dashboard({ session }: { session: Session }) {
           <Button
             variant="ghost"
             className="icon-button"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={toggleTheme}
             aria-label={`Use ${theme === "dark" ? "light" : "dark"} theme`}
           >
             {theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}

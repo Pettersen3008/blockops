@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-04`
-- Last completed checkpoint: `FE-03`
-- Next action: extract `AppProviders`, `QueryProvider`, and `ThemeProvider` while preserving query defaults and the `blockops-theme` contract
+- Active checkpoint: `FE-05`
+- Last completed checkpoint: `FE-04`
+- Next action: install React Router v6.30 and replace manual history routing with a static nested data router and lazy route modules
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -20,8 +20,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-01` | complete | `docs(frontend): record refactor baseline [FE-01]` |
 | `FE-02` | complete | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
 | `FE-03` | complete | `style(frontend): establish UI foundation [FE-03]` |
-| `FE-04` | in progress | `refactor(frontend): extract application providers [FE-04]` |
-| `FE-05` | not started | `refactor(frontend): introduce data router and shell [FE-05]` |
+| `FE-04` | complete | `refactor(frontend): extract application providers [FE-04]` |
+| `FE-05` | in progress | `refactor(frontend): introduce data router and shell [FE-05]` |
 | `FE-06` | not started | `refactor(frontend): validate and isolate authentication [FE-06]` |
 | `FE-07` | not started | `refactor(frontend): migrate overview feature [FE-07]` |
 | `FE-08` | not started | `refactor(frontend): migrate backups feature [FE-08]` |
@@ -58,6 +58,12 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Inter Variable and JetBrains Mono Variable are bundled locally. Legacy typography now uses supported 500, 600, and 700 weights, while the original light/dark BlockOps palette is represented by semantic tokens.
 - Production JavaScript plus CSS is 367.2 kB raw / 106.6 kB gzip. The 12.4% gzip increase over FE-01 was investigated: 9.8 kB gzip is the explicit Tailwind preflight/utility layer and styles for the eight checked-in primitives; the JavaScript increase remains approximately two percent. This foundation cost is accepted here and will be re-measured after route splitting and legacy CSS removal.
 - The production-embedded Playwright journey passed setup, unavailable/error/empty states, confirmations, WebSocket console, audit/settings, mobile navigation, and horizontal-overflow checks. `npm audit --audit-level=high` reports zero vulnerabilities.
+
+### FE-04 verification
+
+- `QueryProvider` preserves the existing query defaults, `ThemeProvider` preserves the `blockops-theme` storage key and system-theme fallback, and `AppProviders` is the single provider composition boundary.
+- `bootstrap.tsx` now owns root discovery, Strict Mode, providers, and rendering; `App.tsx` is composition-only while the manual router remains unchanged for FE-05.
+- Typecheck, all four unit tests, the Rsbuild production build, and the production-embedded Playwright journey pass.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
