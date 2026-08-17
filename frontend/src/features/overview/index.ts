@@ -1,1 +1,1 @@
-export { OverviewPage } from "./OverviewPage";
+export { OverviewPage } from "./overview-page";

@@ -1,4 +1,4 @@
-import type { Role } from "./auth.schemas";
+import type { Role } from "./auth-schemas";
 
 export type Permission =
   | "monitor.read"

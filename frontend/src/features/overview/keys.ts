@@ -1,1 +1,1 @@
-export { overviewKeys } from "./overview.keys";
+export { overviewKeys } from "./overview-keys";

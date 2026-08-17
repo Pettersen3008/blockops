@@ -1,1 +1,1 @@
-export { ConsolePage } from "./ConsolePage";
+export { ConsolePage } from "./console-page";

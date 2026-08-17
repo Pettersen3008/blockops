@@ -1,1 +1,1 @@
-export { WorldsPage } from "./WorldsPage";
+export { WorldsPage } from "./worlds-page";
