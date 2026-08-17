@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-07`
-- Last completed checkpoint: `FE-06`
-- Next action: migrate Overview schemas, query polling, server actions, unavailable states, confirmation behavior, and the narrow backup-creation hook
+- Active checkpoint: `FE-08`
+- Last completed checkpoint: `FE-07`
+- Next action: complete the Backups feature with validated catalog/create/delete/restore hooks, confirmations, downloads, invalidation, tests, and removal of legacy backup code
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -23,8 +23,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-04` | complete | `refactor(frontend): extract application providers [FE-04]` |
 | `FE-05` | complete | `refactor(frontend): introduce data router and shell [FE-05]` |
 | `FE-06` | complete | `refactor(frontend): validate and isolate authentication [FE-06]` |
-| `FE-07` | in progress | `refactor(frontend): migrate overview feature [FE-07]` |
-| `FE-08` | not started | `refactor(frontend): migrate backups feature [FE-08]` |
+| `FE-07` | complete | `refactor(frontend): migrate overview feature [FE-07]` |
+| `FE-08` | in progress | `refactor(frontend): migrate backups feature [FE-08]` |
 | `FE-09` | not started | `refactor(frontend): migrate worlds feature [FE-09]` |
 | `FE-10` | not started | `refactor(frontend): migrate players feature [FE-10]` |
 | `FE-11` | not started | `refactor(frontend): migrate audit feature [FE-11]` |
@@ -79,6 +79,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - The shared HTTP client parses successful payloads before returning them and turns unreadable or schema-invalid payloads into a fixed `ApiError`. Error envelopes are length-, character-, and code-validated; arbitrary thrown errors and malformed bodies are never rendered.
 - Vitest now has jsdom, Testing Library, user-event, and jest-dom support with explicit per-test cleanup. Five test files and all 11 tests pass, covering auth schemas, form behavior, permissions, malformed transport responses, and existing formatting behavior.
 - Typecheck, the Rsbuild production build, `npm audit --audit-level=high`, and the full production-embedded Playwright setup/login/logout/permission journey pass. The three previously documented moderate Router v6 advisories remain unchanged.
+
+### FE-07 verification
+
+- `features/overview` owns discriminated availability schemas, the 10-second polling query, server-action mutation, query keys, confirmation copy, components, and its lazy route page. Available states require validated values; malformed data cannot reach rendering.
+- Overview retains unavailable messaging, clamped utilization meters, permission-aware actions, delayed server-state invalidation, and backup/server confirmation behavior. The legacy global Overview DTOs and API methods were removed.
+- `features/backups` now exposes the narrow validated backup schema and creation hook required by Overview. The legacy Backups page retains its existing create path only until FE-08 completes the feature in the immediately following checkpoint.
+- Eight test files and all 19 tests pass, including unavailable/invalid Overview payloads and confirmation cancellation. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass; Router’s three documented moderate advisories remain unchanged.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 

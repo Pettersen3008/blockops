@@ -1,11 +1,10 @@
 import type {
   AuditEvent,
-  Backup,
   ConsoleLine,
-  OverviewData,
   Player,
   SettingsData,
 } from "./types";
+import type { Backup } from "@/features/backups";
 import type { Role, User } from "@/features/auth";
 import { ApiError, apiErrorFromResponse, safeErrorMessage } from "@/lib/api/ApiError";
 
@@ -29,7 +28,6 @@ async function request<T>(
 }
 
 export const api = {
-  overview: () => request<OverviewData>("/api/v1/overview"),
   consoleHistory: () =>
     request<{ lines: ConsoleLine[] }>("/api/v1/console/history"),
   executeCommand: (csrf: string, command: string) =>
@@ -72,12 +70,6 @@ export const api = {
       throw await apiErrorFromResponse(response);
     }
   },
-  serverAction: (csrf: string, action: "start" | "stop" | "restart") =>
-    request<{ status: string }>(
-      "/api/v1/server/actions",
-      { method: "POST", body: JSON.stringify({ action }) },
-      csrf,
-    ),
   audit: () => request<{ events: AuditEvent[] }>("/api/v1/audit?limit=200"),
   users: () => request<{ users: User[] }>("/api/v1/users"),
   createUser: (csrf: string, username: string, password: string, role: Role) =>

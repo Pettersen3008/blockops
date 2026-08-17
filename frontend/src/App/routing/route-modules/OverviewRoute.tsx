@@ -1,4 +1,4 @@
-import { OverviewPage } from "@/pages/OverviewPage";
+import { OverviewPage } from "@/features/overview";
 import { PermissionBoundary } from "../PermissionBoundary";
 import { useRouteSession } from "../useRouteSession";
 
