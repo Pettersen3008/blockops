@@ -5,10 +5,10 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-03`
-- Last completed checkpoint: `FE-02`
-- Next action: configure Tailwind CSS v4, shadcn Base UI, semantic tokens, and local variable fonts
-- Last green verification: 2026-08-17 — typecheck, unit tests, Rsbuild production build, dependency audit, development-proxy Playwright, and production-embedded Playwright passed
+- Active checkpoint: `FE-04`
+- Last completed checkpoint: `FE-03`
+- Next action: extract `AppProviders`, `QueryProvider`, and `ThemeProvider` while preserving query defaults and the `blockops-theme` contract
+- Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
 
@@ -19,8 +19,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-00` | complete | `chore: establish BlockOps MVP baseline [FE-00]` |
 | `FE-01` | complete | `docs(frontend): record refactor baseline [FE-01]` |
 | `FE-02` | complete | `build(frontend): migrate from Vite to Rsbuild [FE-02]` |
-| `FE-03` | in progress | `style(frontend): establish UI foundation [FE-03]` |
-| `FE-04` | not started | `refactor(frontend): extract application providers [FE-04]` |
+| `FE-03` | complete | `style(frontend): establish UI foundation [FE-03]` |
+| `FE-04` | in progress | `refactor(frontend): extract application providers [FE-04]` |
 | `FE-05` | not started | `refactor(frontend): introduce data router and shell [FE-05]` |
 | `FE-06` | not started | `refactor(frontend): validate and isolate authentication [FE-06]` |
 | `FE-07` | not started | `refactor(frontend): migrate overview feature [FE-07]` |
@@ -49,6 +49,15 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Rsbuild defaults to changing proxy origins, which the backend correctly rejects for WebSockets. `changeOrigin: false` is therefore explicit to preserve the Vite behavior and BlockOps origin checks.
 - Total production output is 323.2 kB raw / 97.1 kB gzip, approximately two percent above the FE-01 gzip baseline and below the ten-percent investigation threshold.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
+
+### FE-03 verification
+
+- Tailwind CSS 4.3.3 runs through PostCSS under Rsbuild; TypeScript and Rsbuild both resolve the `@/*` alias.
+- The shadcn project metadata reports Base UI, `base-nova`, CSS variables, `rsc: false`, Lucide, and Tailwind v4. The CLI cannot initialize a manually configured Rsbuild project, so `components.json` was created from the documented schema and then verified with `shadcn info` before adding components.
+- Only button, card, input, label, alert, dialog, sheet, and skeleton were generated. Their direct Base UI, variant, class-merging, and animation dependencies are recorded in `package-lock.json`.
+- Inter Variable and JetBrains Mono Variable are bundled locally. Legacy typography now uses supported 500, 600, and 700 weights, while the original light/dark BlockOps palette is represented by semantic tokens.
+- Production JavaScript plus CSS is 367.2 kB raw / 106.6 kB gzip. The 12.4% gzip increase over FE-01 was investigated: 9.8 kB gzip is the explicit Tailwind preflight/utility layer and styles for the eight checked-in primitives; the JavaScript increase remains approximately two percent. This foundation cost is accepted here and will be re-measured after route splitting and legacy CSS removal.
+- The production-embedded Playwright journey passed setup, unavailable/error/empty states, confirmations, WebSocket console, audit/settings, mobile navigation, and horizontal-overflow checks. `npm audit --audit-level=high` reports zero vulnerabilities.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
