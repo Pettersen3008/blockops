@@ -1,24 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authKeys } from "@/features/auth";
 import { overviewKeys } from "@/features/overview/keys";
-import { settingsApi } from "./settings-api";
+import {
+  createUser,
+  disableUser,
+  getSettings,
+  getUsers,
+  revokeSessions,
+  updateRcon,
+} from "./settings-api";
 import { settingsKeys, userKeys } from "./settings-keys";
-import type { CreateUserRequest, RconCredentials } from "./settings-schemas";
 
 export type UserChange = { type: "disable" | "revoke"; userId: string };
 
 export function useSettings() {
-  return useQuery({ queryKey: settingsKeys.detail(), queryFn: settingsApi.get });
+  return useQuery({ queryKey: settingsKeys.detail(), queryFn: getSettings });
 }
 
 export function useUsers() {
-  return useQuery({ queryKey: userKeys.catalog(), queryFn: settingsApi.users });
+  return useQuery({ queryKey: userKeys.catalog(), queryFn: getUsers });
 }
 
-export function useUpdateRcon(csrfToken: string) {
+export function useUpdateRcon() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (credentials: RconCredentials) => settingsApi.updateRcon(csrfToken, credentials),
+    mutationFn: updateRcon,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: settingsKeys.all });
       void queryClient.invalidateQueries({ queryKey: overviewKeys.all });
@@ -26,20 +32,20 @@ export function useUpdateRcon(csrfToken: string) {
   });
 }
 
-export function useCreateUser(csrfToken: string) {
+export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateUserRequest) => settingsApi.createUser(csrfToken, input),
+    mutationFn: createUser,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: userKeys.all }),
   });
 }
 
-export function useChangeUser(csrfToken: string, currentUserId: string, onSuccess: () => void) {
+export function useChangeUser(currentUserId: string, onSuccess: () => void) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (change: UserChange) => change.type === "disable"
-      ? settingsApi.disableUser(csrfToken, change.userId)
-      : settingsApi.revokeSessions(csrfToken, change.userId),
+      ? disableUser(change.userId)
+      : revokeSessions(change.userId),
     onSuccess: (_, change) => {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
       if (change.type === "revoke" && change.userId === currentUserId) {

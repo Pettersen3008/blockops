@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { api, parseApiResponse } from "@/lib/api/api";
 import { ApiError } from "@/lib/api/api-error";
-import { httpRequest } from "@/lib/api/http-client";
 import {
   loginCredentialsSchema,
   sessionSchema,
@@ -9,29 +9,34 @@ import {
 } from "./auth-schemas";
 import type { AuthCredentials, Session } from "./auth-schemas";
 
-export const authApi = {
-  setupStatus: () => httpRequest("/api/v1/setup", setupStatusSchema),
-  setup: (credentials: AuthCredentials) => httpRequest(
-    "/api/v1/setup",
-    sessionSchema,
-    { method: "POST", body: JSON.stringify(setupCredentialsSchema.parse(credentials)) },
-  ),
-  login: (credentials: AuthCredentials) => httpRequest(
-    "/api/v1/auth/login",
-    sessionSchema,
-    { method: "POST", body: JSON.stringify(loginCredentialsSchema.parse(credentials)) },
-  ),
-  session: async (): Promise<Session | null> => {
-    try {
-      return await httpRequest("/api/v1/auth/session", sessionSchema);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) return null;
-      throw error;
-    }
-  },
-  logout: (csrfToken: string) => httpRequest(
-    "/api/v1/auth/logout",
-    z.undefined(),
-    { method: "POST", csrfToken },
-  ),
-};
+export async function getSetupStatus() {
+  const data = await api.get("/api/v1/setup");
+  return parseApiResponse(data, setupStatusSchema);
+}
+
+export async function setup(credentials: AuthCredentials) {
+  const body = setupCredentialsSchema.parse(credentials);
+  const data = await api.post("/api/v1/setup", { body });
+  return parseApiResponse(data, sessionSchema);
+}
+
+export async function login(credentials: AuthCredentials) {
+  const body = loginCredentialsSchema.parse(credentials);
+  const data = await api.post("/api/v1/auth/login", { body });
+  return parseApiResponse(data, sessionSchema);
+}
+
+export async function getSession(): Promise<Session | null> {
+  try {
+    const data = await api.get("/api/v1/auth/session");
+    return parseApiResponse(data, sessionSchema);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
+}
+
+export async function logout() {
+  const data = await api.post("/api/v1/auth/logout");
+  return parseApiResponse(data, z.undefined());
+}

@@ -3,10 +3,10 @@ import { overviewKeys } from "@/features/overview/keys";
 import { playerKeys } from "@/features/players/keys";
 import { replaceWorld } from "./worlds-api";
 
-export function useReplaceWorld(csrfToken: string, onSuccess: () => void) {
+export function useReplaceWorld(onSuccess: () => void) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => replaceWorld(csrfToken, file),
+    mutationFn: replaceWorld,
     onSuccess: () => {
       onSuccess();
       void queryClient.invalidateQueries({ queryKey: overviewKeys.all });

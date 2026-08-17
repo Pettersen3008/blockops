@@ -23,8 +23,8 @@ export function UserSettings({ session, users }: { session: Session; users: User
   const [role, setRole] = useState<Role>("viewer");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [intent, setIntent] = useState<UserIntent>(null);
-  const create = useCreateUser(session.csrfToken);
-  const change = useChangeUser(session.csrfToken, session.user.id, () => setIntent(null));
+  const create = useCreateUser();
+  const change = useChangeUser(session.user.id, () => setIntent(null));
 
   const submit = (event: FormEvent) => {
     event.preventDefault();

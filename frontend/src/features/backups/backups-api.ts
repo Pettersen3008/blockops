@@ -1,29 +1,30 @@
 import { z } from "zod";
-import { httpRequest } from "@/lib/api/http-client";
+import { api, parseApiResponse } from "@/lib/api/api";
 import {
   backupCatalogSchema,
   backupSchema,
   restoreBackupResponseSchema,
 } from "./backup-schemas";
 
-export const backupsApi = {
-  catalog: () => httpRequest("/api/v1/backups", backupCatalogSchema),
-  create: (csrfToken: string) => httpRequest(
-    "/api/v1/backups",
-    backupSchema,
-    { method: "POST", csrfToken },
-  ),
-  delete: (csrfToken: string, id: string) => httpRequest(
-    `/api/v1/backups/${encodeURIComponent(id)}`,
-    z.undefined(),
-    { method: "DELETE", csrfToken },
-  ),
-  restore: (csrfToken: string, id: string) => httpRequest(
-    `/api/v1/backups/${encodeURIComponent(id)}/restore`,
-    restoreBackupResponseSchema,
-    { method: "POST", csrfToken },
-  ),
-};
+export async function getBackups() {
+  const data = await api.get("/api/v1/backups");
+  return parseApiResponse(data, backupCatalogSchema);
+}
+
+export async function createBackup() {
+  const data = await api.post("/api/v1/backups");
+  return parseApiResponse(data, backupSchema);
+}
+
+export async function deleteBackup(id: string) {
+  const data = await api.delete(`/api/v1/backups/${encodeURIComponent(id)}`);
+  return parseApiResponse(data, z.undefined());
+}
+
+export async function restoreBackup(id: string) {
+  const data = await api.post(`/api/v1/backups/${encodeURIComponent(id)}/restore`);
+  return parseApiResponse(data, restoreBackupResponseSchema);
+}
 
 export function backupDownloadUrl(id: string): string {
   return `/api/v1/backups/${encodeURIComponent(id)}/download`;

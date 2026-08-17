@@ -25,7 +25,7 @@ type LevelFilter = "all" | "warning" | "error";
 export function ConsolePage({ session }: { session: Session }) {
   const history = useConsoleHistory();
   const stream = useConsoleStream();
-  const execute = useExecuteConsoleCommand(session.csrfToken);
+  const execute = useExecuteConsoleCommand();
   const [pausedLines, setPausedLines] = useState<ConsoleLine[] | null>(null);
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState<LevelFilter>("all");

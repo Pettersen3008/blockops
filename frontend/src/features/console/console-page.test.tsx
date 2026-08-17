@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@/features/auth";
+import { configureCsrfToken } from "@/lib/api/api";
 import { ConsolePage } from "./console-page";
 
 const session: Session = {
@@ -36,12 +37,14 @@ Object.defineProperty(HTMLElement.prototype, "scrollTo", { value: vi.fn(), confi
 
 afterEach(() => {
   sockets.length = 0;
+  configureCsrfToken(() => undefined);
   vi.unstubAllGlobals();
 });
 
 function renderConsole(fetchMock: ReturnType<typeof vi.fn>, currentSession = session) {
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("WebSocket", OpenWebSocket);
+  configureCsrfToken(() => currentSession.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><ConsolePage session={currentSession} /></QueryClientProvider>);
 }

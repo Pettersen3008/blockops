@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@/features/auth";
+import { configureCsrfToken } from "@/lib/api/api";
 import { WorldsPage } from "./worlds-page";
 
 const session: Session = {
@@ -17,9 +18,13 @@ const session: Session = {
   expiresAt: "2026-08-18T00:00:00Z",
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  configureCsrfToken(() => undefined);
+  vi.unstubAllGlobals();
+});
 
 function renderWorlds() {
+  configureCsrfToken(() => session.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>

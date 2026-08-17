@@ -1,16 +1,14 @@
-import { httpRequest } from "@/lib/api/http-client";
+import { api, parseApiResponse } from "@/lib/api/api";
 import { playerActionRequestSchema, playerActionResponseSchema, playerCatalogSchema } from "./player-schemas";
 import type { PlayerActionRequest } from "./player-schemas";
 
-export const playersApi = {
-  catalog: () => httpRequest("/api/v1/players", playerCatalogSchema),
-  runAction: (csrfToken: string, request: PlayerActionRequest) => httpRequest(
-    "/api/v1/players/actions",
-    playerActionResponseSchema,
-    {
-      method: "POST",
-      body: JSON.stringify(playerActionRequestSchema.parse(request)),
-      csrfToken,
-    },
-  ),
-};
+export async function getPlayers() {
+  const data = await api.get("/api/v1/players");
+  return parseApiResponse(data, playerCatalogSchema);
+}
+
+export async function runPlayerAction(request: PlayerActionRequest) {
+  const body = playerActionRequestSchema.parse(request);
+  const data = await api.post("/api/v1/players/actions", { body });
+  return parseApiResponse(data, playerActionResponseSchema);
+}

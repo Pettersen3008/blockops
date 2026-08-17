@@ -34,10 +34,10 @@ import type { ServerState } from "./overview-schemas";
 export function OverviewPage({ session }: { session: Session }) {
   const [pendingAction, setPendingAction] = useState<OverviewAction | null>(null);
   const overview = useOverview();
-  const backup = useCreateBackup(session.csrfToken, {
+  const backup = useCreateBackup({
     onSettled: () => setPendingAction(null),
   });
-  const serverAction = useServerAction(session.csrfToken, () => setPendingAction(null));
+  const serverAction = useServerAction(() => setPendingAction(null));
 
   const runPending = () => {
     if (pendingAction === "backup") backup.mutate();

@@ -20,7 +20,7 @@ export function WorldsPage({ session }: { session: Session }) {
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const replace = useReplaceWorld(session.csrfToken, () => {
+  const replace = useReplaceWorld(() => {
     setFile(null);
     setFileError(null);
     setConfirmOpen(false);

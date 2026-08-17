@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { overviewKeys } from "@/features/overview/keys";
-import { backupsApi } from "./backups-api";
+import { createBackup, deleteBackup, getBackups, restoreBackup } from "./backups-api";
 import { backupKeys } from "./backups-keys";
 
 interface MutationCallbacks {
@@ -17,13 +17,13 @@ function useBackupInvalidation() {
 }
 
 export function useBackups() {
-  return useQuery({ queryKey: backupKeys.catalog(), queryFn: backupsApi.catalog });
+  return useQuery({ queryKey: backupKeys.catalog(), queryFn: getBackups });
 }
 
-export function useCreateBackup(csrfToken: string, callbacks: MutationCallbacks = {}) {
+export function useCreateBackup(callbacks: MutationCallbacks = {}) {
   const invalidate = useBackupInvalidation();
   return useMutation({
-    mutationFn: () => backupsApi.create(csrfToken),
+    mutationFn: createBackup,
     onSuccess: () => {
       invalidate();
       callbacks.onSuccess?.();
@@ -32,10 +32,10 @@ export function useCreateBackup(csrfToken: string, callbacks: MutationCallbacks 
   });
 }
 
-export function useDeleteBackup(csrfToken: string, callbacks: MutationCallbacks = {}) {
+export function useDeleteBackup(callbacks: MutationCallbacks = {}) {
   const invalidate = useBackupInvalidation();
   return useMutation({
-    mutationFn: (id: string) => backupsApi.delete(csrfToken, id),
+    mutationFn: deleteBackup,
     onSuccess: () => {
       invalidate();
       callbacks.onSuccess?.();
@@ -44,10 +44,10 @@ export function useDeleteBackup(csrfToken: string, callbacks: MutationCallbacks 
   });
 }
 
-export function useRestoreBackup(csrfToken: string, callbacks: MutationCallbacks = {}) {
+export function useRestoreBackup(callbacks: MutationCallbacks = {}) {
   const invalidate = useBackupInvalidation();
   return useMutation({
-    mutationFn: (id: string) => backupsApi.restore(csrfToken, id),
+    mutationFn: restoreBackup,
     onSuccess: () => {
       invalidate();
       callbacks.onSuccess?.();

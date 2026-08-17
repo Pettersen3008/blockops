@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@/features/auth";
+import { configureCsrfToken } from "@/lib/api/api";
 import { BackupsPage } from "./backups-page";
 
 const session: Session = {
@@ -25,10 +26,14 @@ const backup = {
   status: "ready",
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  configureCsrfToken(() => undefined);
+  vi.unstubAllGlobals();
+});
 
 function renderBackups(fetchMock: ReturnType<typeof vi.fn>) {
   vi.stubGlobal("fetch", fetchMock);
+  configureCsrfToken(() => session.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>

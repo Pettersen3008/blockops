@@ -20,7 +20,7 @@ export function SettingsPage({ session }: { session: Session }) {
     <>
       <PageHeader eyebrow="Administrator controls" title="Settings" description="Dashboard users, revocable sessions, encrypted RCON credentials, and immutable deployment boundaries." />
       <div className="settings-stack">
-        <IntegrationSettings session={session} status={settings.data.rcon} />
+        <IntegrationSettings status={settings.data.rcon} />
         <UserSettings session={session} users={users.data.users} />
         <DeploymentSettings settings={settings.data.deployment} />
       </div>

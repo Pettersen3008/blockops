@@ -2,14 +2,14 @@ import { startTransition, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { overviewKeys } from "@/features/overview/keys";
 import { playerKeys } from "@/features/players/keys";
-import { consoleApi } from "./console-api";
+import { executeConsoleCommand, getConsoleHistory } from "./console-api";
 import { consoleKeys } from "./console-keys";
 import type { ConsoleLine } from "./console-schemas";
 import { connectConsoleStream } from "./console-stream";
 import type { ConsoleConnectionState } from "./console-stream";
 
 export function useConsoleHistory() {
-  return useQuery({ queryKey: consoleKeys.history(), queryFn: consoleApi.history });
+  return useQuery({ queryKey: consoleKeys.history(), queryFn: getConsoleHistory });
 }
 
 export function useConsoleStream() {
@@ -24,10 +24,10 @@ export function useConsoleStream() {
   return { connection, lines };
 }
 
-export function useExecuteConsoleCommand(csrfToken: string) {
+export function useExecuteConsoleCommand() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (command: string) => consoleApi.execute(csrfToken, command),
+    mutationFn: executeConsoleCommand,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: consoleKeys.all });
       void queryClient.invalidateQueries({ queryKey: overviewKeys.all });

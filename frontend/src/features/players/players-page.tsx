@@ -21,7 +21,7 @@ export function PlayersPage({ session }: { session: Session }) {
   const [newNameError, setNewNameError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingPlayerAction | null>(null);
   const players = usePlayers();
-  const action = usePlayerAction(session.csrfToken, () => {
+  const action = usePlayerAction(() => {
     setPending(null);
     setNewName("");
     setNewNameError(null);

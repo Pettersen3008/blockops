@@ -23,9 +23,9 @@ export function BackupsPage({ session }: { session: Session }) {
   const [intent, setIntent] = useState<BackupIntent>(null);
   const backups = useBackups();
   const callbacks = { onSuccess: () => setIntent(null) };
-  const create = useCreateBackup(session.csrfToken, callbacks);
-  const remove = useDeleteBackup(session.csrfToken, callbacks);
-  const restore = useRestoreBackup(session.csrfToken, callbacks);
+  const create = useCreateBackup(callbacks);
+  const remove = useDeleteBackup(callbacks);
+  const restore = useRestoreBackup(callbacks);
   const canCreate = hasPermission(session.user.role, "backups.create");
   const canDelete = hasPermission(session.user.role, "backups.delete");
   const canRestore = hasPermission(session.user.role, "backups.restore");

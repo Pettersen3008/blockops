@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@/features/auth";
+import { configureCsrfToken } from "@/lib/api/api";
 import { SettingsPage } from "./settings-page";
 
 const session: Session = {
@@ -18,7 +19,10 @@ const settings = {
 
 const viewer = { id: "viewer-1", username: "viewer", role: "viewer", disabled: false, createdAt: "2026-08-17T12:00:00Z" };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  configureCsrfToken(() => undefined);
+  vi.unstubAllGlobals();
+});
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -26,6 +30,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 function renderSettings(fetchMock: ReturnType<typeof vi.fn>) {
   vi.stubGlobal("fetch", fetchMock);
+  configureCsrfToken(() => session.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><SettingsPage session={session} /></QueryClientProvider>);
 }

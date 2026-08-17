@@ -9,7 +9,7 @@ export function AppShell() {
   const session = useRouteSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const logout = useLogoutMutation(session.csrfToken);
+  const logout = useLogoutMutation();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@/features/auth";
+import { configureCsrfToken } from "@/lib/api/api";
 import { PlayersPage } from "./players-page";
 
 const session: Session = {
@@ -22,10 +23,14 @@ const players = [
   { name: "Steve", online: true, allowlisted: true, banned: false, operator: false },
 ];
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  configureCsrfToken(() => undefined);
+  vi.unstubAllGlobals();
+});
 
 function renderPlayers(fetchMock: ReturnType<typeof vi.fn>, currentSession = session) {
   vi.stubGlobal("fetch", fetchMock);
+  configureCsrfToken(() => currentSession.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>

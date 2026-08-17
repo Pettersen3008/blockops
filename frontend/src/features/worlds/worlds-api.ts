@@ -1,18 +1,10 @@
-import { httpRequest } from "@/lib/api/http-client";
+import { api, parseApiResponse } from "@/lib/api/api";
 import { replaceWorldResponseSchema, worldFileSchema } from "./world-schemas";
 
 export const WORLD_DOWNLOAD_URL = "/api/v1/world/download";
 
-export function replaceWorld(csrfToken: string, file: File) {
+export async function replaceWorld(file: File) {
   const parsedFile = worldFileSchema.parse(file);
-  return httpRequest(
-    "/api/v1/world",
-    replaceWorldResponseSchema,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/zip" },
-      body: parsedFile,
-      csrfToken,
-    },
-  );
+  const data = await api.put("/api/v1/world", { body: parsedFile });
+  return parseApiResponse(data, replaceWorldResponseSchema);
 }

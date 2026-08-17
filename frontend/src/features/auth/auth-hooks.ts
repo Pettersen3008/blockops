@@ -1,16 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { authApi } from "./auth-api";
+import { getSession, getSetupStatus, login, logout, setup } from "./auth-api";
 import { authKeys } from "./auth-keys";
 import type { AuthCredentials, Session } from "./auth-schemas";
 
 export function useSetupStatus() {
-  return useQuery({ queryKey: authKeys.setup(), queryFn: authApi.setupStatus, staleTime: Infinity });
+  return useQuery({ queryKey: authKeys.setup(), queryFn: getSetupStatus, staleTime: Infinity });
 }
 
 export function useSessionQuery(enabled: boolean) {
   return useQuery({
     queryKey: authKeys.session(),
-    queryFn: authApi.session,
+    queryFn: getSession,
     enabled,
     retry: false,
     staleTime: 60_000,
@@ -29,17 +29,17 @@ function useAuthenticationMutation(mutationFn: (credentials: AuthCredentials) =>
 }
 
 export function useSetupMutation() {
-  return useAuthenticationMutation(authApi.setup);
+  return useAuthenticationMutation(setup);
 }
 
 export function useLoginMutation() {
-  return useAuthenticationMutation(authApi.login);
+  return useAuthenticationMutation(login);
 }
 
-export function useLogoutMutation(csrfToken: string) {
+export function useLogoutMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => authApi.logout(csrfToken),
+    mutationFn: logout,
     onSettled: () => {
       queryClient.clear();
       window.history.replaceState({}, "", "/overview");

@@ -5,7 +5,6 @@ import { Notice } from "@/components/common/notice";
 import { StatusPill } from "@/components/common/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { useUpdateRcon } from "../settings-hooks";
 import { rconCredentialsSchema } from "../settings-schemas";
@@ -13,11 +12,11 @@ import type { RconCredentials, SettingsData } from "../settings-schemas";
 
 type FieldErrors = Partial<Record<keyof RconCredentials, string>>;
 
-export function IntegrationSettings({ session, status }: { session: Session; status: SettingsData["rcon"] }) {
+export function IntegrationSettings({ status }: { status: SettingsData["rcon"] }) {
   const [editedAddress, setEditedAddress] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const update = useUpdateRcon(session.csrfToken);
+  const update = useUpdateRcon();
   const address = editedAddress ?? status.address;
 
   const submit = (event: FormEvent) => {
