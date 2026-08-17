@@ -1,6 +1,6 @@
 import { ChevronRight, Menu, Moon, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { navigationItemFor } from "@/App/routing/routes";
 import { useTheme } from "@/App/providers/ThemeProvider";
 

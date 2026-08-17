@@ -5,12 +5,12 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-14`
-- Last completed checkpoint: `FE-13`
-- Next action: inventory legacy UI/style imports, then migrate shared compositions and add lint, boundary, cycle, unused-code, and React Doctor gates
-- Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
+- Active checkpoint: `FE-15`
+- Last completed checkpoint: `FE-14`
+- Next action: run `make test`, the complete frontend quality matrix, Docker/Compose checks, bundle comparison, and the final manual browser checklist
+- Last green verification: 2026-08-17 — `npm run typecheck`, `npm test` (54 tests), `npm run build`, `npm run lint`, `npm run boundaries`, `npm run knip`, `npm audit --audit-level=high`, React Doctor (100/100), and the production-embedded Playwright journey passed
 - Blockers: none
-- Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
+- Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference; TypeScript 7 remains the native `tsc` while the official `@typescript/typescript6` compatibility API is aliased to `typescript` for ESLint tooling that does not yet support the TypeScript 7 API
 
 At the start of each work session, read this tracker, then run `git status --short` and `git log --oneline -5`. Before pausing, record the exact next action, relevant failure details, and any decision that changes the implementation. Completed checkpoints are committed with their stable ID, and their SHA can be recovered with `git log --grep='FE-xx'`.
 
@@ -30,8 +30,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-11` | complete | `refactor(frontend): migrate audit feature [FE-11]` |
 | `FE-12` | complete | `refactor(frontend): migrate settings feature [FE-12]` |
 | `FE-13` | complete | `refactor(frontend): migrate console feature [FE-13]` |
-| `FE-14` | in progress | `refactor(frontend): remove legacy boundaries [FE-14]` |
-| `FE-15` | not started | `docs(frontend): complete frontend evolution [FE-15]` |
+| `FE-14` | complete | `refactor(frontend): remove legacy boundaries [FE-14]` |
+| `FE-15` | in progress | `docs(frontend): complete frontend evolution [FE-15]` |
 
 ### FE-01 baseline evidence
 
@@ -127,6 +127,14 @@ At the start of each work session, read this tracker, then run `git status --sho
 - The WebSocket accepts only parsed text messages, transitions through explicit connection states, reconnects with capped 500 ms–10 second exponential backoff, and clears timers and handlers on cleanup. HTTP history is capped at 1,000 lines and the deduplicated combined client history at 2,000.
 - Pause now freezes a snapshot while valid live messages continue buffering; resume reveals the latest bounded view. Search and severity filters, auto-scroll, 50-command history, safe RCON response/error state, role controls, and Console/Overview/Players invalidation are preserved.
 - Twenty-three test files and all 54 tests pass, covering malformed socket/history data, reconnect cleanup/backoff, bounds and deduplication, pause buffering, filters, permissions, exact command CSRF, and command history. Typecheck, production build, `npm audit --audit-level=high`, and the expanded production-embedded Playwright pause/resume and safe command-failure journey pass.
+
+### FE-14 verification
+
+- The legacy shared `components/ui.tsx`, its superseded test location, and the root `styles.css` were removed. BlockOps compositions now live in focused `components/common` files, shadcn primitives remain in `components/ui`, formatter tests have a domain-neutral location, and the retained product/layout CSS lives under `App/styles`.
+- ESLint 10 flat configuration covers TypeScript, React Hooks, and TanStack Query rules. Dependency Cruiser rejects cycles, unresolved imports, and cross-feature internal imports; Knip reports no unused files, exports, or dependencies. Its sole informational hint is that imported CSS is compiled rather than traversed.
+- The native TypeScript 7 package has no programmatic API for typescript-eslint. Following the official TypeScript 7 side-by-side guidance, `@typescript/native` supplies the TypeScript 7 `tsc` binary while npm aliases `typescript` to `@typescript/typescript6` for ESLint's supported API.
+- React Doctor initially identified two mixed component/non-component exports and an unlabeled focusable console log. The exports were separated or made private and the intentionally keyboard-scrollable log received an accessible name; the rerun scored 100/100 with no findings.
+- Typecheck, all 54 unit tests, production build, lint, dependency boundaries/cycles, Knip, high-severity audit, and the production-embedded Playwright journey pass. The journey's auth branch now waits deterministically for setup or login before acting. npm's three documented moderate Router v6 advisories remain intentionally accepted because the only automated fix upgrades to v7.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 

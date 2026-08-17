@@ -1,6 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { Plus, ShieldCheck, UserRoundCog, UserX } from "lucide-react";
-import { Button, Card, ConfirmDialog, EmptyState, Field, Notice, StatusPill } from "@/components/ui";
+import { ConfirmDialog } from "@/components/common/ActionDialog";
+import { EmptyState } from "@/components/common/AsyncState";
+import { Field } from "@/components/common/Field";
+import { Notice } from "@/components/common/Notice";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { Role, Session, User } from "@/features/auth";
 import { formatDate } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/ApiError";
@@ -71,7 +77,7 @@ export function UserSettings({ session, users }: { session: Session; users: User
               <StatusPill tone={user.disabled ? "bad" : user.role === "administrator" ? "info" : "neutral"}>{user.disabled ? "disabled" : user.role}</StatusPill>
               <div className="user-row__actions">
                 <Button variant="secondary" onClick={() => setIntent({ type: "revoke", user })}><ShieldCheck aria-hidden="true" />Revoke sessions</Button>
-                {user.id !== session.user.id && !user.disabled ? <Button variant="danger" onClick={() => setIntent({ type: "disable", user })}><UserX aria-hidden="true" />Disable</Button> : null}
+                {user.id !== session.user.id && !user.disabled ? <Button variant="destructive" onClick={() => setIntent({ type: "disable", user })}><UserX aria-hidden="true" />Disable</Button> : null}
               </div>
             </div>
           ))}

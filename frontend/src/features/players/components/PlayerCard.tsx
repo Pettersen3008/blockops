@@ -1,5 +1,7 @@
 import { Ban, Crown, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
-import { Button, Card, StatusPill } from "@/components/ui";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { Player, PlayerAction } from "../player.schemas";
 
 export function PlayerCard({
@@ -27,8 +29,8 @@ export function PlayerCard({
         <div className="player-card__actions">
           <Button variant="secondary" onClick={() => onAction(player.allowlisted ? "allowlist-remove" : "allowlist-add")}><ShieldCheck aria-hidden="true" />{player.allowlisted ? "Remove allowlist" : "Allowlist"}</Button>
           <Button variant="secondary" onClick={() => onAction(player.operator ? "deop" : "op")}><Crown aria-hidden="true" />{player.operator ? "De-OP" : "OP"}</Button>
-          {player.banned ? <Button variant="secondary" onClick={() => onAction("pardon")}><UsersRound aria-hidden="true" />Pardon</Button> : <Button variant="danger" onClick={() => onAction("ban")}><Ban aria-hidden="true" />Ban</Button>}
-          {player.online ? <Button variant="danger" onClick={() => onAction("kick")}><UserMinus aria-hidden="true" />Kick</Button> : null}
+          {player.banned ? <Button variant="secondary" onClick={() => onAction("pardon")}><UsersRound aria-hidden="true" />Pardon</Button> : <Button variant="destructive" onClick={() => onAction("ban")}><Ban aria-hidden="true" />Ban</Button>}
+          {player.online ? <Button variant="destructive" onClick={() => onAction("kick")}><UserMinus aria-hidden="true" />Kick</Button> : null}
         </div>
       ) : null}
     </Card>

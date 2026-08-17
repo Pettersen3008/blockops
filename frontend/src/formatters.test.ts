@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDuration } from "../formatters";
+import { formatBytes, formatDuration } from "./formatters";
 
 describe("metric formatting", () => {
   it("does not invent unavailable values", () => {

@@ -2,19 +2,17 @@ import { useState } from "react";
 import { Archive, Download, History, RotateCcw, Trash2 } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
-import {
-  Button,
-  Card,
-  ConfirmDialog,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Notice,
-  PageHeader,
-  StatusPill,
-} from "@/components/ui";
+import { ConfirmDialog } from "@/components/common/ActionDialog";
+import { EmptyState, ErrorState, LoadingState } from "@/components/common/AsyncState";
+import { Notice } from "@/components/common/Notice";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
 import { formatBytes, formatDate } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/ApiError";
+import { cn } from "@/lib/utils";
 import { backupDownloadUrl } from "./backups.api";
 import { useBackups, useCreateBackup, useDeleteBackup, useRestoreBackup } from "./backups.hooks";
 import type { Backup } from "./backup.schemas";
@@ -72,9 +70,9 @@ export function BackupsPage({ session }: { session: Session }) {
                 <code>{backup.id}</code>
               </div>
               <div className="backup-row__actions">
-                {canDownload ? <a className="button button--secondary" href={backupDownloadUrl(backup.id)}><Download aria-hidden="true" />Download</a> : null}
+                {canDownload ? <a className={cn(buttonVariants({ variant: "secondary" }))} href={backupDownloadUrl(backup.id)}><Download aria-hidden="true" />Download</a> : null}
                 {canRestore ? <Button variant="secondary" onClick={() => setIntent({ type: "restore", backup })}><RotateCcw aria-hidden="true" />Restore</Button> : null}
-                {canDelete ? <Button variant="danger" onClick={() => setIntent({ type: "delete", backup })}><Trash2 aria-hidden="true" />Delete</Button> : null}
+                {canDelete ? <Button variant="destructive" onClick={() => setIntent({ type: "delete", backup })}><Trash2 aria-hidden="true" />Delete</Button> : null}
               </div>
             </Card>
           ))}
@@ -95,7 +93,7 @@ export function BackupsPage({ session }: { session: Session }) {
   );
 }
 
-export function intentCopy(intent: BackupIntent) {
+function intentCopy(intent: BackupIntent) {
   if (intent?.type === "delete") return { title: "Delete this backup?", description: "The local archive and its catalog record will be permanently removed. This cannot be undone.", label: "Delete backup" };
   if (intent?.type === "restore") return { title: "Restore this backup?", description: "BlockOps will stop the server, replace current world directories with this recovery point, and restart. The prior world is kept for rollback until installation succeeds.", label: "Restore backup" };
   return { title: "Create a consistent backup?", description: "World saves will be disabled briefly while BlockOps flushes and archives the configured worlds.", label: "Create backup" };

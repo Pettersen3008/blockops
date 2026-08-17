@@ -8,7 +8,11 @@ import {
   useState,
 } from "react";
 import { ArrowDown, CirclePause, CirclePlay, Search, Send, TerminalSquare } from "lucide-react";
-import { Button, ErrorState, LoadingState, Notice, PageHeader, StatusPill } from "@/components/ui";
+import { ErrorState, LoadingState } from "@/components/common/AsyncState";
+import { Notice } from "@/components/common/Notice";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/ApiError";
@@ -93,7 +97,7 @@ export function ConsolePage({ session }: { session: Session }) {
       </section>
       <section className="terminal-shell" aria-label="Minecraft console output">
         <div className="terminal-shell__header"><div><span /><span /><span /></div><p>{filtered.length} lines shown · 2,000 line client limit</p></div>
-        <div className="terminal" ref={terminalRef} tabIndex={0} role="log" aria-live={paused ? "off" : "polite"} aria-relevant="additions text">
+        <div className="terminal" ref={terminalRef} tabIndex={0} role="log" aria-label="Scrollable Minecraft console output" aria-live={paused ? "off" : "polite"} aria-relevant="additions text">
           {filtered.length === 0 ? <p className="terminal__empty">No console lines match this view.</p> : filtered.map((line) => (
             <div className={lineClass(line.text)} key={`${line.sequence}-${line.timestamp}`}><time dateTime={line.timestamp}>{formatConsoleTime(line.timestamp)}</time><code>{line.text}</code></div>
           ))}

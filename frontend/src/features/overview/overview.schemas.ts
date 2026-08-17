@@ -62,6 +62,5 @@ export const overviewSchema = z.object({
 export const serverActionSchema = z.enum(["start", "stop", "restart"]);
 export const serverActionResponseSchema = z.object({ status: z.string().min(1).max(64) });
 
-export type OverviewData = z.infer<typeof overviewSchema>;
 export type ServerAction = z.infer<typeof serverActionSchema>;
 export type ServerState = z.infer<typeof serverStateSchema>;

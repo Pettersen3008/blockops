@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
-import { Button, LoadingState, Notice } from "@/components/ui";
+import { LoadingState } from "@/components/common/AsyncState";
+import { Notice } from "@/components/common/Notice";
+import { Button } from "@/components/ui/button";
 import { PRODUCT_NAME } from "@/config";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { AppBrand } from "@/components/common/AppBrand";

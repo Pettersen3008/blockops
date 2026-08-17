@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from "react";
-import { Button, Field, Notice } from "@/components/ui";
+import { Field } from "@/components/common/Field";
+import { Notice } from "@/components/common/Notice";
+import { Button } from "@/components/ui/button";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { loginCredentialsSchema, setupCredentialsSchema } from "./auth.schemas";
 import type { AuthCredentials } from "./auth.schemas";

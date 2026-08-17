@@ -30,30 +30,12 @@ code { font-family: "JetBrains Mono Variable", "SFMono-Regular", Consolas, "Libe
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.button { min-height: 42px; border: 1px solid transparent; border-radius: 10px; padding: 0 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: inherit; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease, color 150ms ease; }
-.button svg { width: 17px; height: 17px; }
-.button:hover:not(:disabled) { transform: translateY(-1px); }
-.button:disabled { cursor: not-allowed; opacity: 0.5; }
-.button--primary { background: var(--accent-strong); color: #fff; box-shadow: 0 6px 14px color-mix(in srgb, var(--primary-hover) 22%, transparent); }
-:root[data-theme="dark"] .button--primary { color: #0d1d12; }
-.button--primary:hover:not(:disabled) { background: var(--primary-hover); }
-.button--secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: var(--shadow-soft); }
-.button--secondary:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--primary-hover); }
-.button--danger { background: var(--danger); color: white; }
-.button--danger:hover:not(:disabled) { background: var(--danger-strong); }
-.button--ghost { background: transparent; color: var(--muted-foreground); }
-.button--ghost:hover:not(:disabled) { color: var(--ink); background: var(--surface-soft); }
 .icon-button { width: 42px; min-width: 42px; padding: 0; }
 
 input, select { min-height: 44px; width: 100%; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 0 12px; background: var(--surface); color: var(--ink); transition: border-color 150ms ease, box-shadow 150ms ease; }
 input::placeholder { color: color-mix(in srgb, var(--muted-foreground) 72%, transparent); }
 input:hover, select:hover { border-color: color-mix(in srgb, var(--primary-hover) 50%, var(--line)); }
 input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-hover) 15%, transparent); outline: none; }
-.field { display: grid; gap: 7px; }
-.field > label { font-size: 0.84rem; font-weight: 700; }
-.field__hint { margin: 0; color: var(--muted-foreground); font-size: 0.78rem; line-height: 1.45; }
-
-.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-soft); }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
 .page-header > div:first-child { max-width: 760px; }
 .page-header p:not(.eyebrow) { margin: 0; color: var(--muted-foreground); }
@@ -67,13 +49,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .status-pill--neutral { color: var(--muted-foreground); background: var(--surface-soft); }
 .status-pill--info { color: var(--info); background: var(--info-soft); }
 
-.notice { margin: 14px 0; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 9px; color: var(--ink); background: var(--surface-soft); line-height: 1.5; }
-.notice svg { width: 18px; height: 18px; flex: none; }
-.notice--success { border-color: color-mix(in srgb, var(--primary-hover) 35%, var(--line)); background: var(--accent-soft); }
-.notice--warning { border-color: color-mix(in srgb, var(--warning) 35%, var(--line)); background: var(--warning-soft); }
-.notice--danger { border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); background: var(--danger-soft); }
-.notice--info { border-color: color-mix(in srgb, var(--info) 25%, var(--line)); background: var(--info-soft); }
-
 .state-panel, .full-screen-state { min-height: 380px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; color: var(--muted-foreground); }
 .state-panel > svg { width: 30px; height: 30px; color: var(--primary-hover); }
 .state-panel h2 { margin: 7px 0 0; color: var(--ink); }
@@ -81,8 +56,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .state-panel--error > svg { color: var(--danger); }
 .full-screen-state { min-height: 100vh; padding: 24px; }
 
-.modal { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border: 1px solid var(--line); border-radius: 18px; padding: 24px; color: var(--ink); background: var(--surface); box-shadow: var(--shadow); }
-.modal::backdrop { background: rgba(8, 12, 9, 0.65); backdrop-filter: blur(3px); }
 .modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
 .modal__header h2 { margin: 0 0 6px; font-size: 1.35rem; }
 .modal__header p { margin: 0; color: var(--muted-foreground); }
@@ -376,7 +349,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
   .user-row { grid-template-columns: 42px 1fr auto; }
   .user-row__actions { grid-column: 1 / -1; }
   .user-row__actions .button { flex: 1; }
-  .modal { padding: 18px; }
   .modal__actions { flex-direction: column-reverse; }
   .modal__actions .button { width: 100%; }
 }

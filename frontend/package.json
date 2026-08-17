@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "rsbuild dev",
     "build": "tsc -b && rsbuild build",
+    "lint": "eslint . --max-warnings=0",
+    "boundaries": "depcruise src --config dependency-cruiser.config.js",
+    "knip": "knip",
     "test:e2e": "playwright test",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run src",
@@ -28,20 +31,28 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@rsbuild/core": "^2.1.13",
     "@rsbuild/plugin-react": "^2.1.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@tanstack/eslint-plugin-query": "^5.101.4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.4",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "dependency-cruiser": "^18.2.0",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^30.0.1",
+    "knip": "^6.32.2",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10"
   }
 }

@@ -6,7 +6,10 @@ import {
 } from "@tanstack/react-table";
 import { Search, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Card, EmptyState, ErrorState, LoadingState, PageHeader, StatusPill } from "@/components/ui";
+import { EmptyState, ErrorState, LoadingState } from "@/components/common/AsyncState";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Card } from "@/components/ui/card";
 import { formatDate } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { matchesAuditFilters, parseOutcomeFilter } from "./audit.filters";

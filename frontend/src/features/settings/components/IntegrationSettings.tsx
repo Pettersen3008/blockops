@@ -1,6 +1,10 @@
 import { type FormEvent, useState } from "react";
 import { Cable, KeyRound, LockKeyhole } from "lucide-react";
-import { Button, Card, Field, Notice, StatusPill } from "@/components/ui";
+import { Field } from "@/components/common/Field";
+import { Notice } from "@/components/common/Notice";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { useUpdateRcon } from "../settings.hooks";

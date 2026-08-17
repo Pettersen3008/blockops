@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 const utf8Length = (value: string) => new TextEncoder().encode(value).length;
+const hasLineBreakOrNull = (value: string) => (
+  value.includes("\r") || value.includes("\n") || value.includes("\0")
+);
 
 export const playerNameSchema = z.string().regex(
   /^[A-Za-z0-9_]{1,16}$/,
@@ -9,7 +12,7 @@ export const playerNameSchema = z.string().regex(
 
 const reasonSchema = z.string()
   .refine((reason) => utf8Length(reason) <= 160, "Reason must be at most 160 characters.")
-  .refine((reason) => !/[\r\n\u0000]/u.test(reason), "Reason cannot contain line breaks.");
+  .refine((reason) => !hasLineBreakOrNull(reason), "Reason cannot contain line breaks.");
 
 export const playerSchema = z.object({
   name: playerNameSchema,

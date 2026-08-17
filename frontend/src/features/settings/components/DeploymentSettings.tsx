@@ -1,5 +1,5 @@
 import { ServerCog } from "lucide-react";
-import { Card } from "@/components/ui";
+import { Card } from "@/components/ui/card";
 import { formatBytes } from "@/formatters";
 import type { SettingsData } from "../settings.schemas";
 

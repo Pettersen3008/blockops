@@ -12,16 +12,13 @@ import {
   TriangleAlert,
   Users,
 } from "lucide-react";
-import {
-  Button,
-  Card,
-  ConfirmDialog,
-  ErrorState,
-  LoadingState,
-  Notice,
-  PageHeader,
-  StatusPill,
-} from "@/components/ui";
+import { ConfirmDialog } from "@/components/common/ActionDialog";
+import { ErrorState, LoadingState } from "@/components/common/AsyncState";
+import { Notice } from "@/components/common/Notice";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatusPill } from "@/components/common/StatusPill";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useCreateBackup } from "@/features/backups";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";

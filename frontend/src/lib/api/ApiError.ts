@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+const hasUnsafeMessageCharacters = (message: string) => Array.from(message).some((character) => {
+  const code = character.charCodeAt(0);
+  return code <= 31 || code === 127;
+});
+
 const errorBodySchema = z.object({
   error: z.object({
     code: z.string().regex(/^[a-z0-9_]{1,64}$/).optional(),
-    message: z.string().trim().min(1).max(240).regex(/^[^\u0000-\u001f\u007f]*$/u).optional(),
+    message: z.string().trim().min(1).max(240)
+      .refine((message) => !hasUnsafeMessageCharacters(message))
+      .optional(),
   }).optional(),
 });
 

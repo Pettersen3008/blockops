@@ -2,7 +2,13 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { Download, FileArchive, ShieldAlert, Upload, X } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
-import { Button, Card, ConfirmDialog, Notice, PageHeader } from "@/components/ui";
+import { ConfirmDialog } from "@/components/common/ActionDialog";
+import { Notice } from "@/components/common/Notice";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { formatBytes } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { WORLD_DOWNLOAD_URL } from "./worlds.api";
@@ -57,7 +63,7 @@ export function WorldsPage({ session }: { session: Session }) {
           <p className="eyebrow">Consistent export</p>
           <h2>Download current world</h2>
           <p>BlockOps disables saves, flushes the world, archives the primary and dimension directories, then re-enables saves. A stopped server is archived directly.</p>
-          <a className="button button--secondary" href={WORLD_DOWNLOAD_URL}><Download aria-hidden="true" /> Prepare download</a>
+          <a className={cn(buttonVariants({ variant: "secondary" }))} href={WORLD_DOWNLOAD_URL}><Download aria-hidden="true" /> Prepare download</a>
         </Card>
         <Card className="world-card">
           <div className="world-card__art world-card__art--upload"><Upload aria-hidden="true" /></div>
@@ -70,7 +76,7 @@ export function WorldsPage({ session }: { session: Session }) {
               <input ref={inputRef} className="sr-only" id="world-file" type="file" accept=".zip,application/zip" aria-describedby={fileError ? "world-file-error" : undefined} aria-invalid={Boolean(fileError)} onChange={selectFile} />
               {fileError ? <Notice tone="danger"><span id="world-file-error">{fileError}</span></Notice> : null}
               {file ? <div className="selected-file"><FileArchive aria-hidden="true" /><div><strong>{file.name}</strong><span>{formatBytes(file.size)}</span></div><Button variant="ghost" className="icon-button" aria-label="Remove selected file" onClick={removeFile}><X aria-hidden="true" /></Button></div> : null}
-              <Button variant="danger" disabled={!file || replace.isPending} onClick={() => setConfirmOpen(true)}><ShieldAlert aria-hidden="true" /> Replace current world</Button>
+              <Button variant="destructive" disabled={!file || replace.isPending} onClick={() => setConfirmOpen(true)}><ShieldAlert aria-hidden="true" /> Replace current world</Button>
             </>
           ) : <Notice>Only administrators can upload or replace world data.</Notice>}
         </Card>

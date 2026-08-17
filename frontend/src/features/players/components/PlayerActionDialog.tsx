@@ -1,5 +1,8 @@
 import { type FormEvent, useState } from "react";
-import { Button, Field, Modal, Notice } from "@/components/ui";
+import { Modal } from "@/components/common/ActionDialog";
+import { Field } from "@/components/common/Field";
+import { Notice } from "@/components/common/Notice";
+import { Button } from "@/components/ui/button";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { actionDetails } from "../player.actions";
 import { playerActionRequestSchema } from "../player.schemas";
@@ -56,7 +59,7 @@ export function PlayerActionDialog({
         {error ? <Notice tone="danger">{safeErrorMessage(error)}</Notice> : null}
         <div className="modal__actions">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button type="submit" variant={copy.dangerous ? "danger" : "primary"} disabled={busy}>{busy ? "Working…" : copy.label}</Button>
+          <Button type="submit" variant={copy.dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : copy.label}</Button>
         </div>
       </form>
     </Modal>

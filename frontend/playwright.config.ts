@@ -11,8 +11,8 @@ export default defineConfig({
     baseURL: process.env.BLOCKOPS_E2E_URL ?? "http://127.0.0.1:5173",
     browserName: "chromium",
     headless: true,
-    screenshot: "only-on-failure",
-    trace: "retain-on-failure",
+    screenshot: "off",
+    trace: "off",
     launchOptions: process.env.BLOCKOPS_E2E_CHROME_PATH
       ? { executablePath: process.env.BLOCKOPS_E2E_CHROME_PATH }
       : undefined,

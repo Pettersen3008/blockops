@@ -1,4 +1,5 @@
-import { PageHeader, ErrorState, LoadingState } from "@/components/ui";
+import { ErrorState, LoadingState } from "@/components/common/AsyncState";
+import { PageHeader } from "@/components/common/PageHeader";
 import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/ApiError";
 import { DeploymentSettings } from "./components/DeploymentSettings";

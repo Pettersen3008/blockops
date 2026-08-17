@@ -1,6 +1,6 @@
 import { CircleUserRound, LogOut, ShieldCheck, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { PRODUCT_NAME } from "@/config";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";

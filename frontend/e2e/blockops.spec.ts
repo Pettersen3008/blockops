@@ -18,12 +18,14 @@ test("secure first-run and primary operations remain usable when integrations ar
     expect(initialResponse?.headers()["x-content-type-options"]).toBe("nosniff");
   }
   const setupHeading = page.getByRole("heading", { name: "Create the first administrator" });
+  const loginHeading = page.getByRole("heading", { name: "Welcome back" });
+  await expect(setupHeading.or(loginHeading)).toBeVisible();
   if (await setupHeading.isVisible().catch(() => false)) {
     await page.getByLabel("Username").fill(username);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Create administrator" }).click();
   } else {
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect(loginHeading).toBeVisible();
     await page.getByLabel("Username").fill(username);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
