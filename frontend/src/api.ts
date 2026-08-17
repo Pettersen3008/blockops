@@ -47,17 +47,6 @@ export const api = {
       { method: "POST", body: JSON.stringify({ action, name, reason }) },
       csrf,
     ),
-  replaceWorld: async (csrf: string, file: File) => {
-    const response = await fetch("/api/v1/world", {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/zip", "X-CSRF-Token": csrf },
-      body: file,
-    });
-    if (!response.ok) {
-      throw await apiErrorFromResponse(response);
-    }
-  },
   audit: () => request<{ events: AuditEvent[] }>("/api/v1/audit?limit=200"),
   users: () => request<{ users: User[] }>("/api/v1/users"),
   createUser: (csrf: string, username: string, password: string, role: Role) =>

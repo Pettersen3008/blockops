@@ -1,4 +1,4 @@
-import { WorldsPage } from "@/pages/WorldsPage";
+import { WorldsPage } from "@/features/worlds";
 import { PermissionBoundary } from "../PermissionBoundary";
 import { useRouteSession } from "../useRouteSession";
 
