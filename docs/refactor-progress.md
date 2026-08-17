@@ -12,7 +12,7 @@ session — read it first, trust it over memory.
 | FE-16 pnpm | done | `5fe95b7` | pnpm 11.7.0 via Corepack |
 | FE-17 rename + filename lint | done | `7e9266b` | scripted 103 path changes |
 | FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
-| FE-19 reference feature `players` | todo | — | **gate:** needs D-1/D-2/D-3 + human design review |
+| FE-19 reference feature `players` | done | `3a8629f` | reference slice; human design review before FE-20 |
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | todo | — | |
 | FE-22 `backups` | todo | — | |
@@ -28,8 +28,8 @@ session — read it first, trust it over memory.
 | ID | Question | Decision | Decided by | Date |
 |---|---|---|---|---|
 | D-1 | Who owns the CSRF token | API helper via an injected auth-session getter | user | 2026-08-17 |
-| D-2 | Cross-feature cache invalidation | — | — | — |
-| D-3 | Is `ActionDialog` one concept | — | — | — |
+| D-2 | Cross-feature cache invalidation | Broad `invalidateQueries()` after server-state mutations | user | 2026-08-17 |
+| D-3 | Is `ActionDialog` one concept | Shared accessible modal primitive; feature-local action dialogs | user | 2026-08-17 |
 
 ## Log
 
@@ -89,3 +89,16 @@ the start of every session and must stay cheap to load.
 - NOT verified: remote GitHub Actions; React Doctor (would download a non-approved tool)
 - Deleted: `lib/api/http-client.ts`, its test, API object wrappers, and CSRF hook parameters
 - Follow-ups found (not fixed): none
+
+### FE-19 — done — 2026-08-17
+- Changed: made players the API/schema/hooks/components reference slice with shadcn Base UI, Tailwind, query options, and D-2c invalidation
+- Simplest design: one server-state hook module; page-owned UI state; behavior-sized row, form, and dialog components; no domain folder without domain logic
+- Abstraction: shadcn table/badge/avatar primitives; 1 real feature/13 call sites; removes 16 feature CSS selectors and bespoke status/avatar markup; adds 198 registry-source lines
+- New files: 2 API boundaries; 1 schema contract; 1 server-state hook; 3 feature components; 3 shadcn UI primitives
+- State/cache: TanStack Query owns players; page owns search/form/dialog state; successful server mutations broadly invalidate active queries
+- Tests: migrated players contracts to strict MSW; added malformed 200, invalidation, required reason, focus, allowlist, and permission coverage; 23 files/58 tests
+- Verified: `pnpm verify` green; 0 boundary violations; 982.4 kB/516.5 kB gzip build; Playwright 1/1; headed visual/padding check; embedded `/players` 200
+- Performance: 500 rows; unchanged refetch 0 row renders; typed filter 0; one changed player 1; before memo typed filter 3611
+- NOT verified: remote CI; real RCON action; screen-reader audit; React DevTools browser extension (React Profiler API used)
+- Deleted: old player API/hooks/keys/card/action/schema paths, overview key barrel, 16 player CSS selectors, and temporary profiler/QA tests
+- Follow-ups found (not fixed): simplify `app/routing` in its ticket; pre-existing React Doctor query-provider warning; Knip CSS hint; legacy global input precedence until FE-26
