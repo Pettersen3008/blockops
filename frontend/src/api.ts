@@ -1,7 +1,6 @@
 import type {
   AuditEvent,
   ConsoleLine,
-  Player,
   SettingsData,
 } from "./types";
 import type { Role, User } from "@/features/auth";
@@ -33,18 +32,6 @@ export const api = {
     request<{ response: string }>(
       "/api/v1/console/commands",
       { method: "POST", body: JSON.stringify({ command }) },
-      csrf,
-    ),
-  players: () => request<{ players: Player[] }>("/api/v1/players"),
-  playerAction: (
-    csrf: string,
-    action: string,
-    name: string,
-    reason = "",
-  ) =>
-    request<{ response: string }>(
-      "/api/v1/players/actions",
-      { method: "POST", body: JSON.stringify({ action, name, reason }) },
       csrf,
     ),
   audit: () => request<{ events: AuditEvent[] }>("/api/v1/audit?limit=200"),

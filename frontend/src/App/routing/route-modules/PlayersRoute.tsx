@@ -1,4 +1,4 @@
-import { PlayersPage } from "@/pages/PlayersPage";
+import { PlayersPage } from "@/features/players";
 import { PermissionBoundary } from "../PermissionBoundary";
 import { useRouteSession } from "../useRouteSession";
 

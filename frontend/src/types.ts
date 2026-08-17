@@ -4,15 +4,6 @@ export interface ConsoleLine {
   text: string;
 }
 
-export interface Player {
-  name: string;
-  uuid?: string;
-  online: boolean;
-  allowlisted: boolean;
-  banned: boolean;
-  operator: boolean;
-}
-
 export interface AuditEvent {
   id: string;
   occurredAt: string;

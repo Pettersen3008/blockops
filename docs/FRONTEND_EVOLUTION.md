@@ -5,9 +5,9 @@ Status: proposed direction for incremental implementation. Last reviewed: 2026-0
 ## Execution tracker
 
 - Overall status: `in-progress`
-- Active checkpoint: `FE-10`
-- Last completed checkpoint: `FE-09`
-- Next action: migrate Players polling, search, validated action unions, permissions, confirmation/reason flows, invalidation, and behavior tests
+- Active checkpoint: `FE-11`
+- Last completed checkpoint: `FE-10`
+- Next action: add TanStack Table and migrate Audit with validated events plus URL-owned `q` and `outcome` filters
 - Last green verification: 2026-08-17 — `npm run typecheck`, `npm test`, `npm run build`, `npm audit --audit-level=high`, and the production-embedded Playwright journey passed
 - Blockers: none
 - Decisions and deviations: local commits replace pull-request slices; no screenshots or image baselines will be stored; checkpoint IDs in commit subjects provide the resumable Git reference
@@ -26,8 +26,8 @@ At the start of each work session, read this tracker, then run `git status --sho
 | `FE-07` | complete | `refactor(frontend): migrate overview feature [FE-07]` |
 | `FE-08` | complete | `refactor(frontend): migrate backups feature [FE-08]` |
 | `FE-09` | complete | `refactor(frontend): migrate worlds feature [FE-09]` |
-| `FE-10` | in progress | `refactor(frontend): migrate players feature [FE-10]` |
-| `FE-11` | not started | `refactor(frontend): migrate audit feature [FE-11]` |
+| `FE-10` | complete | `refactor(frontend): migrate players feature [FE-10]` |
+| `FE-11` | in progress | `refactor(frontend): migrate audit feature [FE-11]` |
 | `FE-12` | not started | `refactor(frontend): migrate settings feature [FE-12]` |
 | `FE-13` | not started | `refactor(frontend): migrate console feature [FE-13]` |
 | `FE-14` | not started | `refactor(frontend): remove legacy boundaries [FE-14]` |
@@ -100,6 +100,13 @@ At the start of each work session, read this tracker, then run `git status --sho
 - Client validation rejects empty files, non-`.zip` names, and incompatible MIME metadata without claiming to inspect archive contents. Path traversal, links, expanded size, staging, rollback, and container restart remain backend security responsibilities.
 - Successful replacement invalidates the narrow Overview and Players key prefixes. A keys-only Players public entry was introduced for this purpose and is completed by FE-10.
 - Twelve test files and all 27 tests pass, including invalid file selection and malformed upload-response failure. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass.
+
+### FE-10 verification
+
+- `features/players` owns validated player/catalog schemas, a seven-branch action discriminated union, API functions, 15-second polling, key factory, action invalidation, search, permission-aware page controls, reason validation, confirmation copy, and components.
+- Java usernames follow the backend’s 1–16 character contract. Optional kick/ban reasons use the backend’s 160-byte and no-line-break constraints; actions that do not accept a reason require an empty reason in the schema.
+- Successful actions invalidate Players and Overview through narrow key entry points. The legacy player page, DTO, and global endpoints were removed; Console’s existing prefix invalidation remains compatible until FE-13.
+- Fourteen test files and all 32 tests pass, including search, exact action body and CSRF, malformed catalog failure, discriminated action validation, reason constraints, and viewer read-only controls. Typecheck, production build, `npm audit --audit-level=high`, and the production-embedded Playwright journey pass.
 
 This plan improves the BlockOps frontend without changing its product behavior, security model, or visual identity. The current green palette, quiet surfaces, restrained shadows, and light/dark modes are product assets and should be preserved.
 
