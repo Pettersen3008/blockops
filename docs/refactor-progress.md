@@ -9,7 +9,7 @@ session — read it first, trust it over memory.
 | Ticket | Status | Commit | Notes |
 |---|---|---|---|
 | FE-15 baseline + MSW | done | `0740168` | strict global MSW server |
-| FE-16 pnpm | todo | — | |
+| FE-16 pnpm | done | `5fe95b7` | pnpm 11.7.0 via Corepack |
 | FE-17 rename + filename lint | todo | — | script the renames, do not hand-edit |
 | FE-18 api helper | todo | — | **gate:** needs D-1 decided |
 | FE-19 reference feature `players` | todo | — | **gate:** needs D-1/D-2/D-3 + human design review |
@@ -55,3 +55,14 @@ the start of every session and must stay cheap to load.
 - NOT verified: `pnpm verify` is unavailable until FE-16
 - Deleted: temporary unhandled-request scratch test; no production code
 - Follow-ups found (not fixed): 3 moderate React Router audit findings; knip CSS configuration hint
+
+### FE-16 — done — 2026-08-17
+- Changed: pinned pnpm 11.7.0 and migrated the lockfile, scripts, Make, Docker, and CI commands
+- Simplest design: Node 24 Corepack installs the pinned manager; no package-manager action or cache layer
+- New files: `frontend/pnpm-lock.yaml` records the exact dependency graph
+- State/cache: application state unchanged; removed the npm-specific CI cache configuration
+- Tests: no test changes; existing 23 files/54 tests preserved
+- Verified: `pnpm verify` green; frozen install; `make test`; Docker image; Compose config; Playwright 1/1; embedded deep-link refresh
+- NOT verified: remote GitHub Actions execution; interactive `make dev-web`
+- Deleted: `frontend/package-lock.json` and npm commands from Docker, Make, and CI
+- Follow-ups found (not fixed): 5 moderate pnpm audit findings; user-owned README and SECURITY wording still says npm; Make build still needs explicit asset assembly
