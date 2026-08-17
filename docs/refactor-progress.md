@@ -11,7 +11,7 @@ session — read it first, trust it over memory.
 | FE-15 baseline + MSW | done | `0740168` | strict global MSW server |
 | FE-16 pnpm | done | `5fe95b7` | pnpm 11.7.0 via Corepack |
 | FE-17 rename + filename lint | done | `7e9266b` | scripted 103 path changes |
-| FE-18 api helper | todo | — | **gate:** needs D-1 decided |
+| FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
 | FE-19 reference feature `players` | todo | — | **gate:** needs D-1/D-2/D-3 + human design review |
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | todo | — | |
@@ -27,7 +27,7 @@ session — read it first, trust it over memory.
 
 | ID | Question | Decision | Decided by | Date |
 |---|---|---|---|---|
-| D-1 | Who owns the CSRF token | — | — | — |
+| D-1 | Who owns the CSRF token | API helper via an injected auth-session getter | user | 2026-08-17 |
 | D-2 | Cross-feature cache invalidation | — | — | — |
 | D-3 | Is `ActionDialog` one concept | — | — | — |
 
@@ -77,4 +77,15 @@ the start of every session and must stay cheap to load.
 - Verified: `pnpm verify` green; post-script tsc; 114-file content-diff proof; scratch lint failure; `git log --follow`; Playwright 1/1; embedded `/players`
 - NOT verified: remote GitHub Actions execution
 - Deleted: PascalCase/dot-namespaced paths; no code; `src/pages/` was already absent
+- Follow-ups found (not fixed): none
+
+### FE-18 — done — 2026-08-17
+- Changed: replaced `httpRequest` with named feature API functions over `api.get/post/put/delete`; API owns CSRF
+- Simplest design: one injected query-cache getter keeps auth ownership out of `lib/` and removes token threading
+- Abstraction: HTTP transport and safe response parsing; 8 feature API modules/20 endpoints; removes method/options coupling and repeated error normalization; adds one 61-line module and bootstrap injection
+- State/cache: CSRF reads the current auth-session query cache at mutation time; query keys and invalidation unchanged
+- Tests: migrated the 3 client tests and existing page contracts; added CSRF method and 204 coverage; 23 files/56 tests
+- Verified: `pnpm verify` green; `httpRequest` grep empty; Playwright 1/1; Go embedded auth/setup/logout and `/players` deep link; post-commit `/audit?outcome=success` 200
+- NOT verified: remote GitHub Actions; React Doctor (would download a non-approved tool)
+- Deleted: `lib/api/http-client.ts`, its test, API object wrappers, and CSRF hook parameters
 - Follow-ups found (not fixed): none
