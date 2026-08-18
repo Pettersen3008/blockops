@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react";
 import { Field } from "@/components/common/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MAX_NAME_LENGTH } from "../player-schema";
 
 export function AllowlistForm({
   name,
@@ -29,7 +30,7 @@ export function AllowlistForm({
           placeholder="Java username"
           aria-describedby={error ? "allowlist-name-error" : undefined}
           aria-invalid={Boolean(error)}
-          maxLength={16}
+          maxLength={MAX_NAME_LENGTH}
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
         />

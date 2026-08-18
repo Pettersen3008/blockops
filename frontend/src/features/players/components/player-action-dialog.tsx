@@ -5,8 +5,8 @@ import { Notice } from "@/components/common/notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { safeErrorMessage } from "@/lib/api/api-error";
-import { actionDetails } from "../player-action-copy";
-import { playerActionRequestSchema } from "../player-schema";
+import { playerActionCopy } from "../player-action-copy";
+import { MAX_REASON_BYTES, playerActionRequestSchema } from "../player-schema";
 import type { PendingPlayerAction, PlayerActionRequest } from "../player-schema";
 
 export function PlayerActionDialog({
@@ -25,14 +25,13 @@ export function PlayerActionDialog({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
   if (!pending) return null;
-  const copy = actionDetails(pending.action, pending.name);
-  const needsReason = pending.action === "kick" || pending.action === "ban";
+  const copy = playerActionCopy[pending.action];
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsed = playerActionRequestSchema.safeParse({
       ...pending,
-      reason: needsReason ? reason : "",
+      reason: copy.needsReason ? reason : "",
     });
     if (!parsed.success) {
       setReasonError(parsed.error.flatten().fieldErrors.reason?.[0] ?? "The player action is invalid.");
@@ -43,9 +42,9 @@ export function PlayerActionDialog({
   };
 
   return (
-    <Modal open title={copy.title} description={copy.description} onClose={onClose}>
+    <Modal open title={copy.title(pending.name)} description={copy.description} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4" noValidate>
-        {needsReason ? (
+        {copy.needsReason ? (
           <Field label="Reason" htmlFor="player-action-reason" hint={reasonError ?? undefined} hintId="player-action-reason-error" hintIsError={Boolean(reasonError)}>
             <Input
               id="player-action-reason"
@@ -53,7 +52,10 @@ export function PlayerActionDialog({
               onChange={(event) => setReason(event.target.value)}
               aria-describedby={reasonError ? "player-action-reason-error" : undefined}
               aria-invalid={Boolean(reasonError)}
-              maxLength={160}
+              // Coarse browser guard only. maxLength counts UTF-16 units while the
+              // schema counts UTF-8 bytes, and a byte count is always >= a unit count,
+              // so this can only ever be permissive. Zod owns the real limit.
+              maxLength={MAX_REASON_BYTES}
               placeholder="Shown to the player"
               required
             />
@@ -62,7 +64,7 @@ export function PlayerActionDialog({
         {error ? <Notice tone="danger">{safeErrorMessage(error)}</Notice> : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button type="submit" variant={copy.dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : copy.label}</Button>
+          <Button type="submit" variant={copy.dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : copy.confirmLabel}</Button>
         </div>
       </form>
     </Modal>
