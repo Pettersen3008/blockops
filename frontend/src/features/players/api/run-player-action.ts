@@ -2,8 +2,8 @@ import { api, parseApiResponse } from "@/lib/api/api";
 import {
   playerActionRequestSchema,
   playerActionResponseSchema,
-} from "../schemas/player-schema";
-import type { PlayerActionRequest } from "../schemas/player-schema";
+} from "../player-schema";
+import type { PlayerActionRequest } from "../player-schema";
 
 export async function runPlayerAction(request: PlayerActionRequest) {
   const body = playerActionRequestSchema.parse(request);

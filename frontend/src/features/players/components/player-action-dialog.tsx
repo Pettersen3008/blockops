@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { actionDetails } from "../player-action-copy";
-import { playerActionRequestSchema } from "../schemas/player-schema";
-import type { PendingPlayerAction, PlayerActionRequest } from "../schemas/player-schema";
+import { playerActionRequestSchema } from "../player-schema";
+import type { PendingPlayerAction, PlayerActionRequest } from "../player-schema";
 
 export function PlayerActionDialog({
   pending,

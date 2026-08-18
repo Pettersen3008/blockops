@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import type { PendingPlayerAction, Player } from "../schemas/player-schema";
+import type { PendingPlayerAction, Player } from "../player-schema";
 
 export const PlayerRow = memo(function PlayerRow({
   player,

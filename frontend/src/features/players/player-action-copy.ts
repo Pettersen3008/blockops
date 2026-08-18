@@ -1,4 +1,4 @@
-import type { PlayerAction } from "./schemas/player-schema";
+import type { PlayerAction } from "./player-schema";
 
 interface ActionCopy {
   title: (name: string) => string;

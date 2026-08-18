@@ -19,9 +19,10 @@ import { safeErrorMessage } from "@/lib/api/api-error";
 import { AllowlistForm } from "./components/allowlist-form";
 import { PlayerActionDialog } from "./components/player-action-dialog";
 import { PlayerRow } from "./components/player-row";
-import { usePlayerAction, usePlayers } from "./hooks/use-players";
-import { playerNameSchema } from "./schemas/player-schema";
-import type { PendingPlayerAction, PlayerActionRequest } from "./schemas/player-schema";
+import { usePlayerAction } from "./hooks/use-player-action";
+import { usePlayers } from "./hooks/use-players";
+import { playerNameSchema } from "./player-schema";
+import type { PendingPlayerAction, PlayerActionRequest } from "./player-schema";
 
 export function PlayersPage({ session }: { session: Session }) {
   const [search, setSearch] = useState("");
