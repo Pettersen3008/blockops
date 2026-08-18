@@ -1,27 +1,40 @@
-import { type FormEvent, useId } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Field } from "@/components/common/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MAX_NAME_LENGTH } from "../player-schema";
+import { MAX_NAME_LENGTH, playerNameSchema } from "../player-schema";
 
+/**
+ * Adds a player to the vanilla allowlist by name, for players the server has never seen
+ * and so cannot be picked from the table.
+ *
+ * Ownership: this form decides whether the draft is a valid Java username and says so.
+ * The page owns the draft text itself, because the page is what decides when a
+ * successful action discards it.
+ */
 export function AllowlistForm({
   name,
-  error,
   onNameChange,
   onSubmit,
 }: {
   name: string;
-  error: string | null;
   onNameChange: (name: string) => void;
-  onSubmit: () => void;
+  onSubmit: (validName: string) => void;
 }) {
+  const [error, setError] = useState<string | null>(null);
   const nameId = useId();
   const nameErrorId = `${nameId}-error`;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSubmit();
+    const parsed = playerNameSchema.safeParse(name);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "That username is not valid.");
+      return;
+    }
+    setError(null);
+    onSubmit(parsed.data);
   };
 
   return (
@@ -33,6 +46,8 @@ export function AllowlistForm({
           placeholder="Java username"
           aria-describedby={error ? nameErrorId : undefined}
           aria-invalid={Boolean(error)}
+          // Exact rather than coarse: the username pattern is ASCII-only, so UTF-16 units
+          // and UTF-8 bytes agree. Do not "align" this with the reason field's guard.
           maxLength={MAX_NAME_LENGTH}
           value={name}
           onChange={(event) => onNameChange(event.target.value)}

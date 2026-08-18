@@ -162,4 +162,24 @@ describe("PlayersPage", () => {
     expect(screen.queryByRole("button", { name: "Ban" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Add to allowlist")).not.toBeInTheDocument();
   });
+  it("keeps the allowlist draft when a row action succeeds", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/players", () => HttpResponse.json({ players })),
+      http.post("/api/v1/players/actions", () => HttpResponse.json({ response: "Kicked Steve" })),
+    );
+    renderPlayers();
+
+    await screen.findByRole("heading", { name: "Steve" });
+    const draft = screen.getByRole("textbox", { name: "Add to allowlist" });
+    await user.type(draft, "Herobrine");
+
+    await user.click(screen.getByRole("button", { name: "Kick" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByRole("textbox", { name: "Reason" }), "Repeated griefing");
+    await user.click(within(dialog).getByRole("button", { name: "Kick player" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(draft).toHaveValue("Herobrine");
+  });
 });

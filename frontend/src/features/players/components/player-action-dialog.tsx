@@ -38,7 +38,8 @@ export function PlayerActionDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsed = playerActionRequestSchema.safeParse({
-      ...pending,
+      action: pending.action,
+      name: pending.name,
       reason: copy.needsReason ? reason : "",
     });
     if (!parsed.success) {
