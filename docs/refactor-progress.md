@@ -12,7 +12,7 @@ session — read it first, trust it over memory.
 | FE-16 pnpm | done | `5fe95b7` | pnpm 11.7.0 via Corepack |
 | FE-17 rename + filename lint | done | `7e9266b` | scripted 103 path changes |
 | FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
-| FE-19 reference feature `players` | done | `3a8629f` | reference slice; human design review before FE-20 |
+| FE-19 reference feature `players` | done | `3a8629f` | reference slice; design review done in `bb3235c`, see log |
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | todo | — | |
 | FE-22 `backups` | todo | — | |
@@ -102,3 +102,16 @@ the start of every session and must stay cheap to load.
 - NOT verified: remote CI; real RCON action; screen-reader audit; React DevTools browser extension (React Profiler API used)
 - Deleted: old player API/hooks/keys/card/action/schema paths, overview key barrel, 16 player CSS selectors, and temporary profiler/QA tests
 - Follow-ups found (not fixed): simplify `app/routing` in its ticket; pre-existing React Doctor query-provider warning; Knip CSS hint; legacy global input precedence until FE-26
+
+### FE-19 review — done — 2026-08-18
+- Changed: design-reviewed the reference slice before FE-20 copies it; 14 defects fixed across 7 stacked commits (`39a75e9`..`bb3235c`); AGENTS.md gains a Feature shape section
+- Simplest design: no new folders, no new abstractions, no new dependencies. The action vocabulary stayed a copy table and row buttons stayed literal JSX, because the row renders four conditional slots rather than seven actions
+- Abstraction: `needsReason` returns to the existing copy table as a conditional type over the request union; 1 table, 7 entries, 2 consumers; removes a duplicated predicate and the `actionDetails()` reshaper; adds no runtime code
+- New files: `players-query.ts` (React-free key/fetcher/freshness), `hooks/use-player-action.ts`, `player-action-copy.test.ts`. `schemas/` deleted as a one-file folder
+- State/cache: mutation status has exactly one owner (the TanStack mutation) and one surface (the dialog); pending state carries which surface started the action so a success resets only that surface; D-2c broad invalidation unchanged, and now asserted for what it actually promises including that it reaches the session query
+- Tests: 23 files/58 tests to 24 files/65 tests. Every behavioural fix was checked by reintroducing the bug and confirming the new test fails
+- Verified: `pnpm verify` green; 0 boundary violations; 982.9 kB/516.7 kB gzip. `Extract<PlayerActionRequest, { reason: "" }>` confirmed to narrow to the five no-reason actions, and claiming `op` needs a reason confirmed to fail `tsc`. `TableHead` class overrides confirmed against tailwind-merge
+- Performance: 500 rows, re-measured. Search keystroke 0 row renders; unchanged poll refetch 0; one changed player 1. The same probe with an inline `onAction` measures 500 renders per keystroke and 500 for one changed player, which is what the single `useCallback` buys
+- NOT verified: not run against the Go binary and Playwright not run this pass; the row-header cell was not eyeballed in either theme, only its class merge checked; focus restore after a *successful* action, where the trigger relabels or unmounts, is still uncovered; Base UI's autofocus target in the reason dialog unchecked; no screen-reader pass on the rowheader change; no real RCON action; remote CI not run
+- Deleted: `actionDetails()`, the redundant outbound `parse()`, the duplicate page-level error Notice, the dialog's template-string remount key, the page's copy of the schema's own error message, the `!players.data` branch, the `?? []` allocation, the per-call `TextEncoder`, and the test's hardcoded copy of the overview cache key
+- Follow-ups found (not fixed): **F-1** `authentication-boundary.tsx:32` renders a full-screen error on `session.isError`, the session query has `retry: false`, and D-2c invalidates it on every player action, so one transient background refetch failure replaces the whole dashboard mid-keystroke; fix is `session.isError && !session.data`, own ticket before FE-20. **F-2** route constants for `app/routing` (`router.tsx` writes `"overview"`, `routes.ts` writes `"/overview"`). **F-3** `worlds-page.tsx` has the same success-callback conflation this pass removed from players. **F-4** `worlds-api.ts` re-parses an already-typed `File` and throws a raw `ZodError`. **F-5** dependency-cruiser's `pathNot` whitelist names `keys.ts`/`creation.ts`, neither of which exists. **F-6** `ConfirmDialog`'s footer still uses `modal__actions`. **F-7** shared async-state and page-header still emit legacy classes. **F-8** the identifier shares the row-header cell, so the row header's accessible name includes the UUID; its own column would make it terser

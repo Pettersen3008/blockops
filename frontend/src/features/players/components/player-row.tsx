@@ -9,15 +9,20 @@ import type { PendingPlayerAction, Player } from "../player-schema";
 const AVATAR_INITIALS_LENGTH = 2;
 
 /**
- * memo here is measured, not decoration: at 500 rows, one search keystroke went from 3611
- * row renders to 0 (docs/refactor-progress.md, FE-19). It rests on two invariants that are
- * invisible from this file:
+ * memo here is measured, not decoration. At 500 rows:
+ *
+ *   one search keystroke         0 row renders
+ *   an unchanged poll refetch    0
+ *   one player's state changed   1
+ *
+ * It rests on two invariants that are invisible from this file:
  *
  *   1. `onAction` must be referentially stable — see requestFromRow in players-page.tsx.
+ *      Swapping it for an inline arrow measures 500 renders per keystroke instead of 0.
  *   2. `player` identity comes from TanStack's structural sharing, so nothing may map,
  *      clone or re-sort the array between the query and this row.
  *
- * Break either one and it silently goes back to 3611.
+ * Break either one and every visible row re-renders on every keystroke, silently.
  */
 export const PlayerRow = memo(function PlayerRow({
   player,
