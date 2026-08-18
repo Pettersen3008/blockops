@@ -60,15 +60,20 @@ export function PlayersPage({ session }: { session: Session }) {
     });
   };
   const canManage = hasPermission(session.user.role, "players.manage");
-  const normalizedSearch = search.toLowerCase();
-  const filtered = (players.data?.players ?? []).filter((player) => (
-    player.name.toLowerCase().includes(normalizedSearch)
-  ));
 
-  if (players.isLoading) return <LoadingState label="Reading players and vanilla access lists" />;
-  if (players.isError || !players.data) {
+  if (players.isPending) return <LoadingState label="Reading players and vanilla access lists" />;
+  if (players.isError) {
     return <ErrorState message={safeErrorMessage(players.error)} onRetry={() => void players.refetch()} />;
   }
+
+  // Go returns the catalog online first, then by lowercased name
+  // (backend/internal/operations/service.go). Do not sort here: it would cost a pass per
+  // render, give the two orderings a chance to disagree, and break the referential
+  // stability the memo on PlayerRow depends on.
+  const normalizedSearch = search.toLowerCase();
+  const filtered = players.data.players.filter((player) => (
+    player.name.toLowerCase().includes(normalizedSearch)
+  ));
 
   return (
     <>

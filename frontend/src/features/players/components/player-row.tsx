@@ -3,9 +3,22 @@ import { Ban, Crown, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TableCell, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import type { PendingPlayerAction, Player } from "../player-schema";
 
+const AVATAR_INITIALS_LENGTH = 2;
+
+/**
+ * memo here is measured, not decoration: at 500 rows, one search keystroke went from 3611
+ * row renders to 0 (docs/refactor-progress.md, FE-19). It rests on two invariants that are
+ * invisible from this file:
+ *
+ *   1. `onAction` must be referentially stable — see requestFromRow in players-page.tsx.
+ *   2. `player` identity comes from TanStack's structural sharing, so nothing may map,
+ *      clone or re-sort the array between the query and this row.
+ *
+ * Break either one and it silently goes back to 3611.
+ */
 export const PlayerRow = memo(function PlayerRow({
   player,
   canManage,
@@ -15,46 +28,56 @@ export const PlayerRow = memo(function PlayerRow({
   canManage: boolean;
   onAction: (action: PendingPlayerAction) => void;
 }) {
+  // One decision per toggle, so the action sent and the label shown cannot disagree.
+  const allowlist = player.allowlisted
+    ? ({ action: "allowlist-remove", label: "Remove allowlist" } as const)
+    : ({ action: "allowlist-add", label: "Allowlist" } as const);
+  const operator = player.operator
+    ? ({ action: "deop", label: "De-OP" } as const)
+    : ({ action: "op", label: "OP" } as const);
+  const hasAccessBadge = player.allowlisted || player.operator || player.banned;
+
   return (
     <TableRow>
-      <TableCell className="min-w-64 whitespace-normal">
+      {/* The player identifies the row, so this is a row header rather than a heading:
+          seven sibling <h2>s inside cells make a document outline that is just a list of
+          usernames, and a row header is what gets announced alongside every other cell. */}
+      <TableHead scope="row" className="h-auto min-w-64 p-2 font-normal whitespace-normal">
         <div className="flex items-center gap-3">
           <Avatar size="lg" aria-hidden="true">
-            <AvatarFallback>{player.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{player.name.slice(0, AVATAR_INITIALS_LENGTH).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-semibold">{player.name}</h2>
+              <span className="font-semibold">{player.name}</span>
               <Badge variant={player.online ? "default" : "secondary"}>
                 {player.online ? "Online" : "Offline"}
               </Badge>
             </div>
-            <code className="mt-1 block max-w-56 truncate text-xs text-muted-foreground">
+            <code className="mt-1 block max-w-56 truncate text-xs font-normal text-muted-foreground">
               {player.uuid || "UUID unavailable"}
             </code>
           </div>
         </div>
-      </TableCell>
+      </TableHead>
       <TableCell className="whitespace-normal">
         <div className="flex min-w-48 flex-wrap gap-1.5">
           {player.allowlisted ? <Badge variant="outline"><ShieldCheck aria-hidden="true" />Allowlisted</Badge> : null}
           {player.operator ? <Badge variant="outline"><Crown aria-hidden="true" />Operator</Badge> : null}
           {player.banned ? <Badge variant="destructive"><Ban aria-hidden="true" />Banned</Badge> : null}
-          {!player.allowlisted && !player.operator && !player.banned ? (
-            <span className="text-sm text-muted-foreground">Standard access</span>
-          ) : null}
+          {hasAccessBadge ? null : <span className="text-sm text-muted-foreground">Standard access</span>}
         </div>
       </TableCell>
       {canManage ? (
         <TableCell className="whitespace-normal">
           <div className="flex min-w-max flex-wrap justify-end gap-1.5">
-            <Button size="sm" variant="secondary" onClick={() => onAction({ action: player.allowlisted ? "allowlist-remove" : "allowlist-add", name: player.name })}>
+            <Button size="sm" variant="secondary" onClick={() => onAction({ action: allowlist.action, name: player.name })}>
               <ShieldCheck data-icon="inline-start" aria-hidden="true" />
-              {player.allowlisted ? "Remove allowlist" : "Allowlist"}
+              {allowlist.label}
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => onAction({ action: player.operator ? "deop" : "op", name: player.name })}>
+            <Button size="sm" variant="secondary" onClick={() => onAction({ action: operator.action, name: player.name })}>
               <Crown data-icon="inline-start" aria-hidden="true" />
-              {player.operator ? "De-OP" : "OP"}
+              {operator.label}
             </Button>
             {player.banned ? (
               <Button size="sm" variant="secondary" onClick={() => onAction({ action: "pardon", name: player.name })}>

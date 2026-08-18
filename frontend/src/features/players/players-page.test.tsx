@@ -69,9 +69,9 @@ describe("PlayersPage", () => {
     const queryClient = renderPlayers();
     queryClient.setQueryData(overviewQueryKey, { status: "cached" });
 
-    expect(await screen.findByRole("heading", { name: "Steve" })).toBeVisible();
+    expect(await screen.findByRole("rowheader", { name: /Steve/ })).toBeVisible();
     await user.type(screen.getByPlaceholderText("Search known players"), "ste");
-    expect(screen.queryByRole("heading", { name: "Alex" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("rowheader", { name: /Alex/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Kick" }));
 
     const dialog = screen.getByRole("dialog");
@@ -119,7 +119,7 @@ describe("PlayersPage", () => {
     );
     renderPlayers();
 
-    await screen.findByRole("heading", { name: "Steve" });
+    await screen.findByRole("rowheader", { name: /Steve/ });
     const name = screen.getByRole("textbox", { name: "Add to allowlist" });
     await user.type(name, "bad name");
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -170,7 +170,7 @@ describe("PlayersPage", () => {
     );
     renderPlayers();
 
-    await screen.findByRole("heading", { name: "Steve" });
+    await screen.findByRole("rowheader", { name: /Steve/ });
     const draft = screen.getByRole("textbox", { name: "Add to allowlist" });
     await user.type(draft, "Herobrine");
 
