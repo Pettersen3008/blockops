@@ -39,6 +39,20 @@ describe("api", () => {
     }));
   });
 
+  it("rejects a 200 that is not JSON at all", async () => {
+    // A wrong method or a misspelled path under /api/ falls through to the SPA handler, which
+    // answers 200 text/html. Response parsing must not assume a non-2xx status means non-JSON.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      "<!doctype html><title>BlockOps</title>",
+      { status: 200, headers: { "Content-Type": "text/html" } },
+    )));
+
+    await expect(api.get("/api/v1/palyers")).rejects.toThrow(expect.objectContaining({
+      code: "invalid_response",
+      safeMessage: "BlockOps returned an unreadable response.",
+    }));
+  });
+
   it("returns undefined for an empty response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
