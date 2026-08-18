@@ -3,7 +3,6 @@ import { Search } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/async-state";
-import { Notice } from "@/components/common/notice";
 import { PageHeader } from "@/components/common/page-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +34,13 @@ export function PlayersPage({ session }: { session: Session }) {
     setNewName("");
     setNewNameError(null);
   });
+  // Closing is the only moment a failed attempt can be forgotten, and the dialog is
+  // modal, so no other action can start while one is on screen. Without reset() a
+  // failed ban on Alex still renders when the dialog reopens for Steve.
+  const closeDialog = () => {
+    setPending(null);
+    action.reset();
+  };
   const canManage = hasPermission(session.user.role, "players.manage");
   const normalizedSearch = search.toLowerCase();
   const filtered = (players.data?.players ?? []).filter((player) => (
@@ -59,7 +65,6 @@ export function PlayersPage({ session }: { session: Session }) {
   return (
     <>
       <PageHeader eyebrow="Vanilla access control" title="Players" description="Online presence, identifiers, allowlist, bans, and operator status from the configured Java server." />
-      {action.isError ? <Notice tone="danger">{safeErrorMessage(action.error)}</Notice> : null}
       <Card className="mb-4 flex flex-col gap-4 p-4 lg:flex-row lg:items-end lg:justify-between">
         <label className="relative block w-full lg:max-w-[430px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -101,14 +106,15 @@ export function PlayersPage({ session }: { session: Session }) {
           </Table>
         </Card>
       )}
-      <PlayerActionDialog
-        key={pending ? `${pending.action}:${pending.name}` : "closed"}
-        pending={pending}
-        busy={action.isPending}
-        error={action.error}
-        onClose={() => setPending(null)}
-        onConfirm={(request: PlayerActionRequest) => action.mutate(request)}
-      />
+      {pending ? (
+        <PlayerActionDialog
+          pending={pending}
+          busy={action.isPending}
+          error={action.error}
+          onClose={closeDialog}
+          onConfirm={(request: PlayerActionRequest) => action.mutate(request)}
+        />
+      ) : null}
     </>
   );
 }

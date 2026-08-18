@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { type FormEvent, useId } from "react";
 import { UserPlus } from "lucide-react";
 import { Field } from "@/components/common/field";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,9 @@ export function AllowlistForm({
   onNameChange: (name: string) => void;
   onSubmit: () => void;
 }) {
+  const nameId = useId();
+  const nameErrorId = `${nameId}-error`;
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSubmit();
@@ -23,12 +26,12 @@ export function AllowlistForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-end" noValidate>
-      <Field label="Add to allowlist" htmlFor="allowlist-name" hint={error ?? undefined} hintId="allowlist-name-error" hintIsError={Boolean(error)}>
+      <Field label="Add to allowlist" htmlFor={nameId} hint={error ?? undefined} hintId={nameErrorId} hintIsError={Boolean(error)}>
         <Input
           className="h-10 sm:w-52"
-          id="allowlist-name"
+          id={nameId}
           placeholder="Java username"
-          aria-describedby={error ? "allowlist-name-error" : undefined}
+          aria-describedby={error ? nameErrorId : undefined}
           aria-invalid={Boolean(error)}
           maxLength={MAX_NAME_LENGTH}
           value={name}

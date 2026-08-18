@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { Modal } from "@/components/common/action-dialog";
 import { Field } from "@/components/common/field";
 import { Notice } from "@/components/common/notice";
@@ -9,6 +9,13 @@ import { playerActionCopy } from "../player-action-copy";
 import { MAX_REASON_BYTES, playerActionRequestSchema } from "../player-schema";
 import type { PendingPlayerAction, PlayerActionRequest } from "../player-schema";
 
+/**
+ * Confirms one pending action. The caller renders this only while an action is pending,
+ * so unmounting is what resets the reason field between actions.
+ *
+ * This is the only place a failed action is reported. The page deliberately does not
+ * also render the mutation error, or a single failure shows up twice.
+ */
 export function PlayerActionDialog({
   pending,
   busy,
@@ -16,7 +23,7 @@ export function PlayerActionDialog({
   onClose,
   onConfirm,
 }: {
-  pending: PendingPlayerAction | null;
+  pending: PendingPlayerAction;
   busy: boolean;
   error: unknown;
   onClose: () => void;
@@ -24,7 +31,8 @@ export function PlayerActionDialog({
 }) {
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
-  if (!pending) return null;
+  const reasonId = useId();
+  const reasonErrorId = `${reasonId}-error`;
   const copy = playerActionCopy[pending.action];
 
   const submit = (event: FormEvent) => {
@@ -34,7 +42,10 @@ export function PlayerActionDialog({
       reason: copy.needsReason ? reason : "",
     });
     if (!parsed.success) {
-      setReasonError(parsed.error.flatten().fieldErrors.reason?.[0] ?? "The player action is invalid.");
+      // Only a reason problem belongs in the reason field's hint. A name that fails here
+      // is a caller bug the operator cannot fix from this input.
+      const reasonIssue = parsed.error.issues.find((issue) => issue.path[0] === "reason");
+      setReasonError(reasonIssue?.message ?? "The player action is invalid.");
       return;
     }
     setReasonError(null);
@@ -45,16 +56,16 @@ export function PlayerActionDialog({
     <Modal open title={copy.title(pending.name)} description={copy.description} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {copy.needsReason ? (
-          <Field label="Reason" htmlFor="player-action-reason" hint={reasonError ?? undefined} hintId="player-action-reason-error" hintIsError={Boolean(reasonError)}>
+          <Field label="Reason" htmlFor={reasonId} hint={reasonError ?? undefined} hintId={reasonErrorId} hintIsError={Boolean(reasonError)}>
             <Input
-              id="player-action-reason"
+              id={reasonId}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              aria-describedby={reasonError ? "player-action-reason-error" : undefined}
+              aria-describedby={reasonError ? reasonErrorId : undefined}
               aria-invalid={Boolean(reasonError)}
-              // Coarse browser guard only. maxLength counts UTF-16 units while the
-              // schema counts UTF-8 bytes, and a byte count is always >= a unit count,
-              // so this can only ever be permissive. Zod owns the real limit.
+              // Coarse browser guard only: maxLength counts UTF-16 units while the schema
+              // counts UTF-8 bytes, and a byte count is always at least a unit count, so
+              // this can only ever be permissive. Zod owns the real limit.
               maxLength={MAX_REASON_BYTES}
               placeholder="Shown to the player"
               required
