@@ -213,20 +213,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .selected-file strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selected-file span { color: var(--muted-foreground); font-size: .72rem; }
 
-.backup-list { display: grid; gap: 10px; }
-.backup-row { min-height: 100px; display: grid; grid-template-columns: 50px minmax(220px, 1fr) auto; align-items: center; gap: 15px; padding: 15px 18px; }
-.backup-row__icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; color: var(--primary-hover); background: var(--accent-soft); }
-.backup-row__icon svg { width: 21px; }
-.backup-row__identity > div { display: flex; align-items: center; gap: 9px; }
-.backup-row__identity h2 { margin: 0; font-size: .95rem; }
-.backup-row__identity p { margin: 4px 0; color: var(--muted-foreground); font-size: .78rem; }
-.backup-row__identity code { color: var(--muted-foreground); }
-.backup-row__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
-.retention-note { margin-top: 18px; display: flex; align-items: flex-start; gap: 13px; padding: 18px; color: var(--muted-foreground); }
-.retention-note > svg { width: 21px; color: var(--primary-hover); }
-.retention-note h2 { margin: 0 0 4px; color: var(--ink); }
-.retention-note p { margin: 0; }
-
 .settings-stack { display: grid; gap: 18px; }
 .settings-section { min-width: 0; padding: 24px; overflow-wrap: anywhere; }
 .settings-section__heading { display: grid; grid-template-columns: 48px 1fr auto; align-items: start; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
@@ -261,8 +247,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .inline-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .create-user-form { grid-template-columns: 1fr 1fr; }
-  .backup-row { grid-template-columns: 50px 1fr; }
-  .backup-row__actions { grid-column: 2; justify-content: flex-start; }
 }
 
 @media (max-width: 900px) {
@@ -305,10 +289,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
   .command-form .button { grid-column: 1 / -1; }
   .world-card { padding: 20px; }
   .world-card__art { margin-bottom: 30px; }
-  .backup-row { grid-template-columns: 42px 1fr; padding: 14px; }
-  .backup-row__icon { width: 42px; height: 42px; }
-  .backup-row__actions { grid-column: 1 / -1; }
-  .backup-row__actions .button { flex: 1; }
   .settings-section { padding: 18px; }
   .settings-section__heading { grid-template-columns: 44px 1fr; }
   .settings-section__heading > .status-pill { grid-column: 2; }

@@ -16,7 +16,7 @@ session — read it first, trust it over memory.
 | FE-29 session refetch resilience | done | — | out of order: found in the FE-19 review, gated FE-20 |
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | done | — | query options, URL-owned filters, Tailwind table |
-| FE-22 `backups` | todo | — | |
+| FE-22 `backups` | done | — | endpoint boundaries, destructive-action ownership, Tailwind migration |
 | FE-23 `overview` | todo | — | largest page, 158 lines |
 | FE-24 `settings` | todo | — | record the form-library decision |
 | FE-25 `console` | todo | — | **gate:** WebSocket invariants, human review before merge |
@@ -143,3 +143,19 @@ the start of every session and must stay cheap to load.
 - NOT verified: screen-reader announcement quality; authenticated visual inspection in the in-app browser, whose independent session reached sign-in only; remote CI; real production-host serving rather than the verified production build plus current dev server
 - Deleted: `audit-api.ts`, `audit-hooks.ts`, `audit-keys.ts`, plural schema/test paths, Audit global selectors, fetch stubs, and speculative memo/deferred filtering
 - Follow-ups found (not fixed): none
+
+### FE-22 — done — 2026-08-24
+- Changed: split all five backup endpoints, added a React-free catalog query, moved mutation failures into the initiating confirmation, reset only that action on close/success, preserved server order and Overview's public `useCreateBackup` contract, and replaced every Backups selector with responsive Tailwind utilities
+- Simplest design: the five endpoints, four hooks, and two UI responsibilities earn `api/`, `hooks/`, and `components/`; no generic request/query/invalidation wrapper, mirrored state, sorting pass, memoization, global state, or dependency was added
+- New files: `api/get-backups.ts`, `create-backup.ts`, `delete-backup.ts`, `restore-backup.ts`, and `backup-download-url.ts` each own one exact endpoint; `backups-query.ts` owns key/fetcher/default freshness; `backup-schema.ts` owns wire validation; `hooks/use-backups.ts`, `use-create-backup.ts`, `use-delete-backup.ts`, and `use-restore-backup.ts` each own one query or mutation; `components/backup-row.tsx` owns list-row layout/actions; `components/backup-action-dialog.tsx` owns confirmation copy/error/reset semantics; `backup-schema.test.ts` owns contract bounds
+- State/cache: TanStack Query solely owns catalog and mutation state; the page solely owns pending intent; validated create/delete/restore successes broadly invalidate all cached views per D-2c; malformed successes do not invalidate or close the Backups dialog
+- Behavior: loading/retry, empty/populated catalogs, server ordering, formats, retention copy, permission gating, safe GET downloads, destructive copy, disabled pending controls, focus return, and failure visibility remain; closing a failed action now clears only that action before another opens
+- Performance: no client sort/map copy, memo, callback memo, polling, or download query was added; rows consume TanStack's validated array in server order and mobile layout wraps without horizontal overflow
+- Tests: strict MSW replaces Backups fetch stubs; 24 focused schema/page cases cover bounds, loading/retry, empty/populated/malformed catalogs, ordering/formatting, create/delete/restore success/failure/malformed responses, confirmations, cancellation/focus, reset, invalidation, CSRF, permissions, pending controls, and download encoding; full suite is 25 files/91 tests
+- Verified: focused Vitest 2 files/24 tests; `pnpm --config.verify-deps-before-run=warn verify` green; 0 dependency violations across 147 modules/321 dependencies; Knip only the inherited CSS hint; production build 985.9 kB/517.8 kB gzip; `git diff --check`; endpoint/path/selector/fetch-stub/package-artifact greps clean
+- Browser QA: Playwright 1/1 twice against separate disposable API/frontend servers and fresh databases; covered Backups loading, empty/populated/malformed catalogs, unavailable-integration create failure, cancellation/focus, viewer restrictions, keyboard focus, 390px wrapping/no overflow, direct link, and reload; no delete or restore request was sent
+- Review: findings-first correctness and ponytail passes found and fixed excess callback plumbing, whole-record pending state, and a weak malformed-browser fixture; final review found no in-scope correctness or over-engineering defect
+- Git hygiene: inherited dirty tree preserved; FE-22 hunks in shared CSS, E2E, and progress files were staged separately; no push, dependency, package, lockfile, workspace, store, or protected-ticket ledger change
+- NOT verified: real successful backup creation with RCON/world data; real destructive delete or restore; remote CI; screen-reader audit; in-app browser session, because authenticated Playwright supplied the browser and layout evidence
+- Deleted: `backups-api.ts`, `backups-hooks.ts`, `backups-keys.ts`, `backup-schemas.ts`, its replaced test path, all 19 Backups-specific CSS selector/override lines, and all Backups fetch stubs
+- Follow-ups found (not fixed): shared `ConfirmDialog` and non-Backups global selectors remain for their existing tickets; no FE-22 follow-up

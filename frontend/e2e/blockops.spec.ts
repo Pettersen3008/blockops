@@ -56,8 +56,73 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 
+  await page.route("**/api/v1/backups", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return route.continue();
+  });
   await page.getByRole("link", { name: "Backups", exact: true }).click();
+  await expect(page.getByText("Loading local backup catalog")).toBeVisible();
   await expect(page.getByRole("heading", { name: "No backups yet" })).toBeVisible();
+  await page.unroute("**/api/v1/backups");
+
+  const createBackupButton = page.getByRole("button", { name: "Create backup" });
+  await createBackupButton.click();
+  await expect(page.getByRole("heading", { name: "Create a consistent backup?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Create a consistent backup?" })).toBeHidden();
+  await expect(createBackupButton).toBeFocused();
+  await createBackupButton.click();
+  await page.getByRole("button", { name: "Create backup" }).last().click();
+  await expect(page.getByText("The backup could not be created safely.")).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await page.route("**/api/v1/backups", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ backups: [{
+      id: "unsafe/id",
+      sizeBytes: 1024,
+      createdAt: "2026-08-17T12:00:00Z",
+      createdBy: username,
+      status: "ready",
+    }] }),
+  }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
+  await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
+  await expect(page.getByText("unsafe/id", { exact: true })).toBeHidden();
+  await page.unroute("**/api/v1/backups");
+
+  const browserBackups = [
+    { id: "fedcba9876543210fedcba9876543210", sizeBytes: 1572864, createdAt: "2026-08-17T12:00:00Z", createdBy: username, status: "ready" },
+    { id: "0123456789abcdef0123456789abcdef", sizeBytes: 1024, createdAt: "2026-08-16T11:00:00Z", createdBy: username, status: "ready" },
+  ];
+  await page.route("**/api/v1/backups", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ backups: browserBackups }),
+  }));
+  await page.reload();
+  const backupRows = page.getByRole("list", { name: "Local backup catalog" }).getByRole("listitem");
+  await expect(backupRows).toHaveCount(2);
+  await expect(backupRows.nth(0)).toContainText(browserBackups[0].id);
+  await expect(backupRows.nth(1)).toContainText(browserBackups[1].id);
+  await expect(backupRows.nth(0).getByRole("link", { name: "Download" })).toHaveAttribute(
+    "href",
+    `/api/v1/backups/${browserBackups[0].id}/download`,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  const backupOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+    .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
+    .slice(0, 10));
+  expect(backupOverflow).toEqual([]);
+  await expect(backupRows.nth(0).getByRole("button", { name: "Delete" })).toBeVisible();
+  await expect(backupRows.nth(0).getByRole("button", { name: "Restore" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.unroute("**/api/v1/backups");
 
   await page.getByRole("link", { name: "Audit log", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Audit log", exact: true })).toBeVisible();
@@ -196,6 +261,24 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+  await page.route("**/api/v1/backups", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ backups: [{
+      id: "fedcba9876543210fedcba9876543210",
+      sizeBytes: 1572864,
+      createdAt: "2026-08-17T12:00:00Z",
+      createdBy: username,
+      status: "ready",
+    }] }),
+  }));
+  await page.goto("/backups");
+  await expect(page.getByRole("heading", { name: "Backups", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create backup" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Delete" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Restore" })).toBeHidden();
+  await expect(page.getByRole("link", { name: "Download" })).toBeHidden();
+  await page.unroute("**/api/v1/backups");
   await page.goto("/settings");
   await expect(page.getByText("Restricted area", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();

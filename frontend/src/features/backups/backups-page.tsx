@@ -1,43 +1,52 @@
 import { useState } from "react";
-import { Archive, Download, History, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, History } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
-import { ConfirmDialog } from "@/components/common/action-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/async-state";
-import { Notice } from "@/components/common/notice";
 import { PageHeader } from "@/components/common/page-header";
-import { StatusPill } from "@/components/common/status-pill";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
-import { formatBytes, formatDate } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/api-error";
-import { cn } from "@/lib/utils";
-import { backupDownloadUrl } from "./backups-api";
-import { useBackups, useCreateBackup, useDeleteBackup, useRestoreBackup } from "./backups-hooks";
-import type { Backup } from "./backup-schemas";
-
-type BackupIntent = { type: "create" } | { type: "delete" | "restore"; backup: Backup } | null;
+import { BackupActionDialog } from "./components/backup-action-dialog";
+import type { BackupIntent } from "./components/backup-action-dialog";
+import { BackupRow } from "./components/backup-row";
+import { useBackups } from "./hooks/use-backups";
+import { useCreateBackup } from "./hooks/use-create-backup";
+import { useDeleteBackup } from "./hooks/use-delete-backup";
+import { useRestoreBackup } from "./hooks/use-restore-backup";
 
 export function BackupsPage({ session }: { session: Session }) {
-  const [intent, setIntent] = useState<BackupIntent>(null);
+  const [intent, setIntent] = useState<BackupIntent | null>(null);
   const backups = useBackups();
-  const callbacks = { onSuccess: () => setIntent(null) };
-  const create = useCreateBackup(callbacks);
-  const remove = useDeleteBackup(callbacks);
-  const restore = useRestoreBackup(callbacks);
+  const create = useCreateBackup();
+  const remove = useDeleteBackup();
+  const restore = useRestoreBackup();
   const canCreate = hasPermission(session.user.role, "backups.create");
   const canDelete = hasPermission(session.user.role, "backups.delete");
   const canRestore = hasPermission(session.user.role, "backups.restore");
   const canDownload = hasPermission(session.user.role, "backups.download");
-  const mutationError = create.error ?? remove.error ?? restore.error;
   const busy = create.isPending || remove.isPending || restore.isPending;
 
-  const runIntent = () => {
-    if (intent?.type === "create") create.mutate();
-    if (intent?.type === "delete") remove.mutate(intent.backup.id);
-    if (intent?.type === "restore") restore.mutate(intent.backup.id);
+  const closeDialog = () => {
+    if (intent?.type === "create") create.reset();
+    if (intent?.type === "delete") remove.reset();
+    if (intent?.type === "restore") restore.reset();
+    setIntent(null);
   };
+
+  const runIntent = () => {
+    if (intent?.type === "create") create.mutate(undefined, { onSuccess: closeDialog });
+    if (intent?.type === "delete") remove.mutate(intent.id, { onSuccess: closeDialog });
+    if (intent?.type === "restore") restore.mutate(intent.id, { onSuccess: closeDialog });
+  };
+
+  const mutationError = intent?.type === "create"
+    ? create.error
+    : intent?.type === "delete"
+      ? remove.error
+      : intent?.type === "restore"
+        ? restore.error
+        : null;
 
   if (backups.isLoading) return <LoadingState label="Loading local backup catalog" />;
   if (backups.isError || !backups.data) {
@@ -52,7 +61,6 @@ export function BackupsPage({ session }: { session: Session }) {
         description="Consistent archives on the configured local backup volume. Remote providers remain on the roadmap."
         actions={canCreate ? <Button onClick={() => setIntent({ type: "create" })}><Archive aria-hidden="true" /> Create backup</Button> : undefined}
       />
-      {mutationError ? <Notice tone="danger">{safeErrorMessage(mutationError)}</Notice> : null}
       {backups.data.backups.length === 0 ? (
         <EmptyState
           title="No backups yet"
@@ -60,41 +68,36 @@ export function BackupsPage({ session }: { session: Session }) {
           action={canCreate ? <Button onClick={() => setIntent({ type: "create" })}>Create first backup</Button> : undefined}
         />
       ) : (
-        <div className="backup-list">
+        <ul className="grid min-w-0 list-none gap-2.5 p-0" aria-label="Local backup catalog">
           {backups.data.backups.map((backup) => (
-            <Card className="backup-row" key={backup.id}>
-              <div className="backup-row__icon"><Archive aria-hidden="true" /></div>
-              <div className="backup-row__identity">
-                <div><h2>{formatDate(backup.createdAt)}</h2><StatusPill tone="good">{backup.status}</StatusPill></div>
-                <p>Created by {backup.createdBy} · {formatBytes(backup.sizeBytes)}</p>
-                <code>{backup.id}</code>
-              </div>
-              <div className="backup-row__actions">
-                {canDownload ? <a className={cn(buttonVariants({ variant: "secondary" }))} href={backupDownloadUrl(backup.id)}><Download aria-hidden="true" />Download</a> : null}
-                {canRestore ? <Button variant="secondary" onClick={() => setIntent({ type: "restore", backup })}><RotateCcw aria-hidden="true" />Restore</Button> : null}
-                {canDelete ? <Button variant="destructive" onClick={() => setIntent({ type: "delete", backup })}><Trash2 aria-hidden="true" />Delete</Button> : null}
-              </div>
-            </Card>
+            <BackupRow
+              key={backup.id}
+              backup={backup}
+              canDelete={canDelete}
+              canDownload={canDownload}
+              canRestore={canRestore}
+              onDelete={() => setIntent({ type: "delete", id: backup.id })}
+              onRestore={() => setIntent({ type: "restore", id: backup.id })}
+            />
           ))}
-        </div>
+        </ul>
       )}
-      <Card className="retention-note"><History aria-hidden="true" /><div><h2>Manual retention</h2><p>The MVP never deletes backups automatically. Review free space and remove recovery points intentionally.</p></div></Card>
-      <ConfirmDialog
-        open={intent !== null}
-        title={intentCopy(intent).title}
-        description={intentCopy(intent).description}
-        confirmLabel={intentCopy(intent).label}
-        dangerous={intent?.type === "delete" || intent?.type === "restore"}
-        busy={busy}
-        onClose={() => setIntent(null)}
-        onConfirm={runIntent}
-      />
+      <Card className="mt-[18px] flex min-w-0 items-start gap-[13px] p-[18px] text-muted-foreground">
+        <History className="w-[21px] shrink-0 text-primary-hover" aria-hidden="true" />
+        <div className="min-w-0">
+          <h2 className="mb-1 text-foreground">Manual retention</h2>
+          <p>The MVP never deletes backups automatically. Review free space and remove recovery points intentionally.</p>
+        </div>
+      </Card>
+      {intent ? (
+        <BackupActionDialog
+          intent={intent}
+          busy={busy}
+          error={mutationError}
+          onClose={closeDialog}
+          onConfirm={runIntent}
+        />
+      ) : null}
     </>
   );
-}
-
-function intentCopy(intent: BackupIntent) {
-  if (intent?.type === "delete") return { title: "Delete this backup?", description: "The local archive and its catalog record will be permanently removed. This cannot be undone.", label: "Delete backup" };
-  if (intent?.type === "restore") return { title: "Restore this backup?", description: "BlockOps will stop the server, replace current world directories with this recovery point, and restart. The prior world is kept for rollback until installation succeeds.", label: "Restore backup" };
-  return { title: "Create a consistent backup?", description: "World saves will be disabled briefly while BlockOps flushes and archives the configured worlds.", label: "Create backup" };
 }
