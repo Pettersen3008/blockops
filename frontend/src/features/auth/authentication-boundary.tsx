@@ -85,21 +85,21 @@ function LoginScreen() {
 
 function AuthScreen({ children }: { children: ReactNode }) {
   return (
-    <div className="auth-layout">
-      <section className="auth-intro">
+    <div className="grid min-h-screen grid-cols-[minmax(360px,0.9fr)_minmax(480px,1.1fr)] bg-card max-[900px]:grid-cols-1">
+      <section className="relative flex min-h-screen flex-col overflow-hidden bg-[#111914] p-[clamp(30px,5vw,72px)] text-[#eaf2ec] before:absolute before:right-[-18%] before:bottom-[8%] before:w-[65%] before:aspect-square before:rotate-[42deg] before:border before:border-[rgba(126,185,144,0.17)] before:shadow-[0_0_0_38px_rgba(126,185,144,0.04),0_0_0_78px_rgba(126,185,144,0.025)] before:content-[''] max-[900px]:min-h-[340px] max-[900px]:p-[30px]">
         <AppBrand />
-        <div className="auth-intro__copy">
-          <span className="signal-mark"><span /><span /><span /></span>
-          <h2>Operate the world.<br />Not the host.</h2>
-          <p>A deliberately narrow dashboard for one Minecraft server, with audited actions and no browser shell.</p>
+        <div className="relative z-1 my-auto max-[900px]:my-[55px]">
+          <span className="flex h-[30px] items-end gap-[5px]"><span className="h-2.5 w-1.5 rounded-[5px] bg-[#70b784] opacity-50" /><span className="h-5 w-1.5 rounded-[5px] bg-[#70b784] opacity-75" /><span className="h-[30px] w-1.5 rounded-[5px] bg-[#70b784]" /></span>
+          <h2 className="mt-6 mb-[18px] text-[clamp(2.8rem,5vw,5rem)] leading-[0.98] tracking-[-0.06em] max-[900px]:text-[3.1rem]">Operate the world.<br />Not the host.</h2>
+          <p className="max-w-[500px] text-[1.05rem] text-[#a9b7ad]">A deliberately narrow dashboard for one Minecraft server, with audited actions and no browser shell.</p>
         </div>
-        <p className="auth-intro__foot">Designed for private networks and trusted HTTPS proxies.</p>
+        <p className="relative z-1 m-0 text-[0.8rem] text-[#819086]">Designed for private networks and trusted HTTPS proxies.</p>
       </section>
-      <main className="auth-panel">{children}</main>
+      <main className="flex items-center justify-center bg-card p-8 max-[900px]:px-6 max-[900px]:py-[60px]">{children}</main>
     </div>
   );
 }
 
 function FullScreenState({ children }: { children: ReactNode }) {
-  return <main className="full-screen-state">{children}</main>;
+  return <main className="flex min-h-screen flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">{children}</main>;
 }

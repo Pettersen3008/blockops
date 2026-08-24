@@ -83,7 +83,7 @@ export function UserSettings({ session, users }: { session: Session; users: User
     <Card className="min-w-0 p-6 [overflow-wrap:anywhere] max-[660px]:p-[18px]">
       <div className="grid grid-cols-[48px_1fr_auto] items-start gap-3.5 border-b border-border pb-5 max-[660px]:grid-cols-[44px_1fr] [&>div]:min-w-0">
         <div className="grid size-11 place-items-center rounded-xl bg-accent text-primary-hover [&_svg]:w-[21px]"><UserRoundCog aria-hidden="true" /></div>
-        <div><p className="eyebrow">Dashboard access</p><h2 className="mb-1 text-xl">Users and roles</h2><p className="m-0 text-muted-foreground">Roles govern BlockOps only. Vanilla operator status is managed on Players.</p></div>
+        <div><p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Dashboard access</p><h2 className="mb-1 text-xl">Users and roles</h2><p className="m-0 text-muted-foreground">Roles govern BlockOps only. Vanilla operator status is managed on Players.</p></div>
       </div>
       <form className="my-5 grid grid-cols-[1fr_1fr_minmax(150px,.55fr)_auto] items-end gap-3 max-[1180px]:grid-cols-2 max-[660px]:grid-cols-1" onSubmit={submit} noValidate>
         <Field label="Username" htmlFor="new-username" hint={fieldErrors.username} hintId="new-username-error" hintIsError={Boolean(fieldErrors.username)}>
@@ -93,7 +93,7 @@ export function UserSettings({ session, users }: { session: Session; users: User
           <Input id="new-password" type="password" autoComplete="new-password" aria-describedby={fieldErrors.password ? "new-password-error" : undefined} aria-invalid={Boolean(fieldErrors.password)} minLength={12} maxLength={256} value={password} onChange={(event) => { editCreateField(); setPassword(event.target.value); setFieldErrors((errors) => ({ ...errors, password: undefined })); }} required />
         </Field>
         <Field label="Role" htmlFor="new-role" hint={fieldErrors.role} hintId="new-role-error" hintIsError={Boolean(fieldErrors.role)}>
-          <select id="new-role" aria-describedby={fieldErrors.role ? "new-role-error" : undefined} aria-invalid={Boolean(fieldErrors.role)} value={role} onChange={(event) => { editCreateField(); setRole(event.target.value as Role); setFieldErrors((errors) => ({ ...errors, role: undefined })); }}>
+          <select className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card px-3 text-foreground transition-[border-color,box-shadow] duration-150 hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none" id="new-role" aria-describedby={fieldErrors.role ? "new-role-error" : undefined} aria-invalid={Boolean(fieldErrors.role)} value={role} onChange={(event) => { editCreateField(); setRole(event.target.value as Role); setFieldErrors((errors) => ({ ...errors, role: undefined })); }}>
             <option value="viewer">Viewer</option><option value="operator">Operator</option><option value="administrator">Administrator</option>
           </select>
         </Field>

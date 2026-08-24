@@ -6,7 +6,7 @@ export function WarningsSection({ warnings }: { warnings: Overview["recentWarnin
   return (
     <section className="mt-[34px]" aria-labelledby="warnings-heading">
       <div className="mb-[13px] flex items-end justify-between gap-5 [&_h2]:m-0 [&>svg]:w-5 [&>svg]:text-muted-foreground">
-        <div><p className="eyebrow">Recent signals</p><h2 id="warnings-heading">Console warnings</h2></div>
+        <div><p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Recent signals</p><h2 id="warnings-heading">Console warnings</h2></div>
         <Activity aria-hidden="true" />
       </div>
       <Card>

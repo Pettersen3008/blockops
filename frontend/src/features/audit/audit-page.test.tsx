@@ -97,9 +97,9 @@ describe("AuditPage", () => {
     ]);
     expect(screen.getByText(formatDate(successEvent.occurredAt))).toBeVisible();
     expect(screen.getByRole("cell", { name: "Unauthenticated" })).toBeVisible();
-    expect(within(table).getByText("success")).toHaveClass("status-pill--good");
-    expect(within(table).getByText("failure")).toHaveClass("status-pill--bad");
-    expect(within(table).getByText("denied")).toHaveClass("status-pill--warn");
+    expect(within(table).getByText("success")).toHaveClass("bg-accent", "text-primary");
+    expect(within(table).getByText("failure")).toHaveClass("text-destructive");
+    expect(within(table).getByText("denied")).toHaveClass("bg-warning-muted", "text-warning");
     expect(table.closest("[data-slot='table-container']")).toHaveClass("overflow-x-auto");
     expect(table.closest("[data-slot='table-container']")?.parentElement).toHaveClass("min-w-0", "max-w-full", "overflow-hidden");
   });

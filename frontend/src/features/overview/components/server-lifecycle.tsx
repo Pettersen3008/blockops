@@ -29,7 +29,7 @@ export function ServerLifecycle({
       <div className="min-w-0 px-[26px] pt-6 pb-[18px] max-[660px]:px-[18px] max-[660px]:pt-5 max-[660px]:pb-3.5">
         <div className="flex justify-between gap-[18px] [&_h2]:text-[1.35rem]">
           <div>
-            <p className="eyebrow">Configured Java server</p>
+            <p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Configured Java server</p>
             <h2>{server.available ? "Minecraft server" : "Integration unavailable"}</h2>
           </div>
           <StatusPill tone={stateTone(state)}>{state}</StatusPill>

@@ -8,7 +8,7 @@ export function CapacitySection({ data }: { data: Overview }) {
   return (
     <section aria-labelledby="capacity-heading">
       <div className="mb-[13px] flex items-end justify-between gap-5 [&_h2]:m-0 [&>span]:text-xs [&>span]:text-muted-foreground">
-        <div><p className="eyebrow">Capacity</p><h2 id="capacity-heading">Resource envelope</h2></div>
+        <div><p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Capacity</p><h2 id="capacity-heading">Resource envelope</h2></div>
         <span>Refreshes every 10 seconds</span>
       </div>
       <div className="grid grid-cols-1 gap-3.5 min-[661px]:grid-cols-2 min-[1181px]:grid-cols-4">

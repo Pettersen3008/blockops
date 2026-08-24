@@ -10,14 +10,14 @@ export function AppHeader({ onOpenNavigation }: { onOpenNavigation: () => void }
   const selected = navigationItemFor(location.pathname);
 
   return (
-    <header className="topbar">
-      <Button variant="ghost" className="icon-button topbar__menu" onClick={onOpenNavigation} aria-label="Open navigation">
+    <header className="sticky top-0 z-10 flex h-[68px] items-center gap-4 border-b border-border bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] px-8 backdrop-blur-[16px] max-[900px]:px-[18px]">
+      <Button variant="ghost" className="size-[42px] min-w-[42px] p-0 min-[901px]:hidden" onClick={onOpenNavigation} aria-label="Open navigation">
         <Menu aria-hidden="true" />
       </Button>
-      <div className="breadcrumb"><span>Single server</span><ChevronRight aria-hidden="true" /><strong>{selected?.label ?? "Not found"}</strong></div>
+      <div className="flex min-w-0 items-center gap-2 text-[0.82rem] text-muted-foreground max-[660px]:[&>span]:hidden max-[660px]:[&>svg]:hidden"><span>Single server</span><ChevronRight className="size-[14px]" aria-hidden="true" /><strong className="text-foreground">{selected?.label ?? "Not found"}</strong></div>
       <Button
         variant="ghost"
-        className="icon-button"
+        className="ml-auto size-[42px] min-w-[42px] p-0"
         onClick={toggleTheme}
         aria-label={`Use ${theme === "dark" ? "light" : "dark"} theme`}
       >

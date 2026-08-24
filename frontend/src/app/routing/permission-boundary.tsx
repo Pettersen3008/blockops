@@ -17,11 +17,11 @@ export function PermissionBoundary({
   if (hasPermission(session.user.role, permission)) return children;
 
   return (
-    <div className="restricted-page">
-      <ShieldCheck aria-hidden="true" />
-      <p className="eyebrow">Restricted area</p>
-      <h1>{title}</h1>
-      <p>Your dashboard role does not grant access to this section. Permissions are enforced by the API as well as this interface.</p>
+    <div className="flex min-h-[540px] flex-col items-center justify-center text-center">
+      <ShieldCheck className="mb-5 size-11 text-warning" aria-hidden="true" />
+      <p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Restricted area</p>
+      <h1 className="mb-[14px]">{title}</h1>
+      <p className="max-w-[560px] text-muted-foreground">Your dashboard role does not grant access to this section. Permissions are enforced by the API as well as this interface.</p>
     </div>
   );
 }

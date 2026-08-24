@@ -64,7 +64,7 @@ export function ConsoleCommandForm() {
         <TerminalSquare aria-hidden="true" />
         <label htmlFor="minecraft-command" className="sr-only">Minecraft command</label>
         <span className="font-mono text-muted-foreground" aria-hidden="true">/</span>
-        <input className="min-h-10 min-w-0 border-0 p-0 font-mono shadow-none" id="minecraft-command" aria-describedby={commandError ? "command-error" : undefined} aria-invalid={Boolean(commandError)} value={command} onChange={(event) => startDraft(event.target.value)} onKeyDown={commandKeyDown} placeholder="say Server restart in 10 minutes" maxLength={4096} autoComplete="off" />
+        <input className="min-h-10 min-w-0 border-0 bg-transparent p-0 font-mono text-foreground shadow-none outline-none" id="minecraft-command" aria-describedby={commandError ? "command-error" : undefined} aria-invalid={Boolean(commandError)} value={command} onChange={(event) => startDraft(event.target.value)} onKeyDown={commandKeyDown} placeholder="say Server restart in 10 minutes" maxLength={4096} autoComplete="off" />
         <Button className="max-[660px]:col-span-full" type="submit" disabled={!command.trim() || execute.isPending}><Send aria-hidden="true" />{execute.isPending ? "Sending…" : "Send"}</Button>
       </form>
       {commandError ? <Notice tone="danger"><span id="command-error">{commandError}</span></Notice> : null}

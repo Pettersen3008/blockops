@@ -19,12 +19,12 @@ export function Modal({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <DialogContent className="max-h-[calc(100vh-40px)] w-[min(520px,calc(100vw-32px))] gap-0 rounded-[18px] border-border p-6 shadow-[var(--shadow)] ring-0 sm:max-w-[520px]" showCloseButton={false}>
-        <DialogHeader className="modal__header">
+        <DialogHeader className="mb-[22px] flex flex-row items-start justify-between gap-5 space-y-0">
           <div>
             <DialogTitle className="mb-1.5 text-[1.35rem]">{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </div>
-          <Button variant="ghost" size="icon" className="icon-button" onClick={onClose} aria-label="Close dialog">
+          <Button variant="ghost" size="icon" className="size-[42px] min-w-[42px] p-0" onClick={onClose} aria-label="Close dialog">
             <X aria-hidden="true" />
           </Button>
         </DialogHeader>
@@ -62,7 +62,7 @@ export function ConfirmDialog({
   return (
     <Modal open={open} title={title} description={description} onClose={onClose}>
       {error}
-      <form onSubmit={submit} className="modal__actions">
+      <form onSubmit={submit} className="mt-[22px] flex justify-end gap-2.5 max-[660px]:flex-col-reverse [&_.button]:max-[660px]:w-full">
         <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
         <Button type="submit" variant={dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : confirmLabel}</Button>
       </form>

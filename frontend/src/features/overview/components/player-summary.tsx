@@ -8,7 +8,7 @@ export function PlayerSummary({ players }: { players: Overview["players"] }) {
     <Card className="min-w-0 p-[22px]">
       <div className="flex items-center gap-3 [&>svg]:w-[22px] [&>svg]:text-primary-hover [&_h2]:m-0">
         <Users aria-hidden="true" />
-        <div><p className="eyebrow">Right now</p><h2>Players</h2></div>
+        <div><p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Right now</p><h2>Players</h2></div>
       </div>
       {players.available ? (
         <>

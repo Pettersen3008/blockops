@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "./application.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -154,4 +153,29 @@
   --danger-soft: #3b2421;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
   --shadow-soft: 0 5px 18px rgba(0, 0, 0, 0.22);
+}
+
+:root {
+  font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; min-height: 100%; background: var(--bg); }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--ink); }
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary-hover) 55%, transparent); outline-offset: 2px; }
+a { color: var(--accent-strong); }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: clamp(2rem, 3vw, 3rem); line-height: 1.05; letter-spacing: -0.045em; }
+h2 { margin-bottom: 6px; font-size: 1.1rem; line-height: 1.25; letter-spacing: -0.015em; }
+p { line-height: 1.55; }
+code { font-family: "JetBrains Mono Variable", "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

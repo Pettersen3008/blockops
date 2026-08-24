@@ -47,10 +47,10 @@ export function AuthForm({
   };
 
   return (
-    <form className="auth-form" onSubmit={submit} noValidate>
-      <p className="eyebrow">{eyebrow}</p>
-      <h1>{title}</h1>
-      <p className="auth-form__description">{description}</p>
+    <form className="grid w-[min(430px,100%)] gap-[18px]" onSubmit={submit} noValidate>
+      <p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">{eyebrow}</p>
+      <h1 className="mb-0">{title}</h1>
+      <p className="mb-2 text-muted-foreground">{description}</p>
       {error ? <Notice tone="danger">{safeErrorMessage(error)}</Notice> : null}
       <Field
         label="Username"
@@ -59,7 +59,7 @@ export function AuthForm({
         hintId="username-hint"
         hintIsError={Boolean(fieldErrors.username)}
       >
-        <input
+        <input className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card px-3 text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_72%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none"
           id="username"
           name="username"
           autoComplete="username"
@@ -79,7 +79,7 @@ export function AuthForm({
         hintId="password-hint"
         hintIsError={Boolean(fieldErrors.password)}
       >
-        <input
+        <input className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card px-3 text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_72%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none"
           id="password"
           name="password"
           type="password"
@@ -93,7 +93,7 @@ export function AuthForm({
           onChange={(event) => setPassword(event.target.value)}
         />
       </Field>
-      <Button type="submit" disabled={pending}>{pending ? "Please wait…" : submitLabel}</Button>
+      <Button className="mt-2 min-h-12" type="submit" disabled={pending}>{pending ? "Please wait…" : submitLabel}</Button>
     </form>
   );
 }
