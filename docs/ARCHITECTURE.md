@@ -4,7 +4,7 @@ BlockOps is a single deployable dashboard plus a narrowly scoped Docker guard si
 
 ```mermaid
 flowchart LR
-  B["Administrator browser"] -->|"HTTPS + session cookie + CSRF"| A["BlockOps dashboard\nGo API + embedded React"]
+  B["Administrator browser"] -->|"HTTPS + session cookie + CSRF"| A["BlockOps dashboard\nGo API + embedded web UI"]
   A -->|"parameterized SQL"| S[("SQLite /data")]
   A -->|"fixed Minecraft commands"| R["RCON on private network"]
   A -->|"tail latest.log / staged archives"| M[("Minecraft data volume")]
@@ -25,7 +25,7 @@ flowchart LR
 
 - The main process owns HTTP server shutdown, hourly expired-session cleanup, and the console-tail goroutine through a signal-cancelled context.
 - The console server ring contains 2,000 sanitized lines. Each WebSocket subscriber has a bounded channel; slow subscribers drop lines instead of applying unbounded memory pressure.
-- The React console also caps itself at 2,000 lines and defers search filtering.
+- The browser console also caps itself at 2,000 lines and defers search filtering.
 - One mutex serializes backup, download, restore, and world-replacement operations to prevent overlapping save modes or directory swaps.
 - SQLite uses WAL, foreign keys, a busy timeout, and one connection to match the single-instance MVP. Multiple dashboard replicas are not supported.
 
@@ -38,4 +38,3 @@ flowchart LR
 ## State model
 
 SQLite stores users, password hashes, sessions, audit events, backup catalog entries, and encrypted integration settings. Minecraft remains authoritative for player lists and vanilla permissions. Docker remains authoritative for lifecycle and resource metrics. BlockOps does not duplicate unavailable integration data with fabricated values.
-

@@ -14,7 +14,7 @@ session — read it first, trust it over memory.
 | FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
 | FE-19 reference feature `players` | done | `3a8629f` | reference slice; design review done in `bb3235c`, see log |
 | FE-29 session refetch resilience | done | — | out of order: found in the FE-19 review, gated FE-20 |
-| FE-20 `worlds` | done | — | endpoint boundaries, mutation ownership, Tailwind migration |
+| FE-20 `worlds` | done | `82a7e57` | endpoint boundaries, mutation ownership, Tailwind migration |
 | FE-21 `audit` | done | `816f9ec` | query options, URL-owned filters, Tailwind table |
 | FE-22 `backups` | done | `471da7d` | endpoint boundaries, destructive-action ownership, Tailwind migration |
 | FE-23 `overview` | done | `962639e` | endpoint/query boundaries, mutation ownership, Tailwind sections |

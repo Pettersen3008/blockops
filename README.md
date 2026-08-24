@@ -13,7 +13,7 @@ The current release is a strong single-server MVP. Missing integrations are show
 - Consistent local backup create/download/delete and administrator-only restore.
 - Start/stop/restart of exactly one configured container through a narrow Docker guard sidecar.
 - One-time administrator setup, Argon2id passwords, revocable server sessions, HttpOnly cookies, CSRF protection, login throttling, backend RBAC, security headers, trusted-proxy configuration, encrypted RCON credential rotation, and structured audit events.
-- Responsive, keyboard-accessible light/dark React interface and an embedded production build served by Go.
+- Responsive, keyboard-accessible light/dark interface and an embedded production build served by Go.
 
 BlockOps deliberately has no Docker exec, host shell, general file manager, plugin marketplace, arbitrary container target, or arbitrary host command endpoint.
 
@@ -97,7 +97,7 @@ In another terminal:
 make dev-web
 ```
 
-The Vite server proxies `/api` and WebSockets to `127.0.0.1:8080`. Local development should set `BLOCKOPS_COOKIE_SECURE=false`. Docker and RCON may remain absent; their UI values will be explicitly unavailable.
+The frontend development server proxies `/api` and WebSockets to `127.0.0.1:8080`. Local development should set `BLOCKOPS_COOKIE_SECURE=false`. Docker and RCON may remain absent; their UI values will be explicitly unavailable.
 
 Run deterministic checks with:
 
@@ -112,9 +112,8 @@ With the development servers running, execute the real-browser smoke journey wit
 
 - [OpenAPI 3.1 specification](backend/internal/httpapi/openapi.yaml) — also served at `/api/openapi.yaml`.
 - [`backend/`](backend) — Go API, persistence, integrations, archival operations, and embedded UI.
-- [`frontend/`](frontend) — strict TypeScript React/Vite client using TanStack Query.
+- [`frontend/`](frontend) — browser client.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — trust boundaries and runtime flow.
-- [`docs/FRONTEND_EVOLUTION.md`](docs/FRONTEND_EVOLUTION.md) — frontend architecture decisions and incremental migration plan.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — controls, residual risks, and deployment checklist.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — deliberately deferred features.
 - [`docs/DELIVERY_BRIEF.md`](docs/DELIVERY_BRIEF.md) — observable acceptance criteria.
@@ -128,8 +127,6 @@ Runtime dependencies are intentionally narrow:
 - `modernc.org/sqlite` provides an embedded, CGO-free state store suitable for the single-container model.
 - `golang.org/x/crypto` provides Argon2id.
 - `github.com/coder/websocket` provides a reviewed WebSocket implementation rather than custom framing.
-- React is the UI runtime; TanStack Query owns server state and prevents duplicate request plumbing; Lucide supplies consistent accessible SVG icons.
-- Vite, TypeScript, Vitest, and Playwright are build/test tooling only.
 
 ## License
 

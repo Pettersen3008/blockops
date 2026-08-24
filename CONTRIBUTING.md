@@ -4,7 +4,7 @@ Contributions are welcome when they preserve BlockOps' narrow security boundary.
 
 1. Start from an issue or delivery brief with observable acceptance criteria.
 2. Keep Minecraft input on the RCON path. Do not add host shell, Docker exec, arbitrary container names, outbound URL fetching, or general file browsing.
-3. Add table-driven Go tests and strict TypeScript/Vitest coverage for changed behavior.
+3. Add appropriate automated coverage for changed behavior.
 4. Run `make test`, `make build`, and the relevant browser workflow before opening a pull request.
 5. Explain new dependencies and avoid client-side secrets, raw HTML sinks, or long-lived browser tokens.
 6. Update the OpenAPI document, security model, and roadmap when behavior or boundaries change.
