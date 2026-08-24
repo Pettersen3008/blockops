@@ -6,7 +6,13 @@ const viewerUsername = `${username.slice(0, 24)}-viewer`;
 
 test("secure first-run and primary operations remain usable when integrations are unavailable", async ({ page }) => {
   const pageErrors: string[] = [];
+  let closeConsoleSocket: (() => Promise<void>) | undefined;
+  let sendConsoleFrame: ((frame: string | Buffer) => void) | undefined;
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.routeWebSocket("**/api/v1/console/ws", (socket) => {
+    closeConsoleSocket = () => socket.close({ code: 1012, reason: "Reconnect verification" });
+    sendConsoleFrame = (frame) => socket.send(frame);
+  });
 
   const initialResponse = await page.goto("/");
   expect(initialResponse).not.toBeNull();
@@ -86,17 +92,87 @@ test("secure first-run and primary operations remain usable when integrations ar
     .slice(0, 10));
   expect(desktopOverflow).toEqual([]);
 
+  let malformedConsoleHistory = false;
+  let consoleHistoryRequests = 0;
+  let consoleCommandRequests = 0;
+  let consoleCommandResponse: "success" | "failure" | "malformed" = "success";
+  await page.route("**/api/v1/console/history", async (route) => {
+    consoleHistoryRequests += 1;
+    if (consoleHistoryRequests === 1) await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(malformedConsoleHistory
+        ? { lines: [{ sequence: -1, timestamp: "2026-08-24T10:00:00Z", text: "<script>unsafe history</script>" }] }
+        : { lines: [{ sequence: 10, timestamp: "2026-08-24T10:00:00Z", text: "[WARN] intercepted history" }] }),
+    });
+  });
+  await page.route("**/api/v1/console/commands", async (route) => {
+    consoleCommandRequests += 1;
+    expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
+    if (consoleCommandResponse === "failure") {
+      await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: { code: "command_failed", message: "Intercepted RCON failure." } }) });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(consoleCommandResponse === "malformed" ? { response: { unsafe: "<script>unsafe command</script>" } } : { response: "Intercepted RCON success." }),
+    });
+  });
+
   await page.getByRole("link", { name: "Console", exact: true }).click();
+  await expect(page.getByText("Loading bounded console history")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
+  await expect(page.getByText("[WARN] intercepted history")).toBeVisible();
   await expect(page.getByText("connected", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Minecraft command")).toBeVisible();
+  sendConsoleFrame?.("not json");
+  sendConsoleFrame?.(Buffer.from("binary unsafe"));
+  sendConsoleFrame?.(JSON.stringify({ sequence: -1, timestamp: "2026-08-24T10:00:01Z", text: "unsafe frame" }));
+  sendConsoleFrame?.(JSON.stringify({ sequence: 11, timestamp: "2026-08-24T10:00:01Z", text: "valid live frame" }));
+  await expect(page.getByText("valid live frame")).toBeVisible();
+  await expect(page.getByText("unsafe frame", { exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.getByRole("log")).toHaveAttribute("aria-live", "off");
+  sendConsoleFrame?.(JSON.stringify({ sequence: 12, timestamp: "2026-08-24T10:00:02Z", text: "accumulated while paused" }));
+  await expect(page.getByText("accumulated while paused", { exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Return to live output" }).click();
+  await expect(page.getByText("accumulated while paused")).toBeVisible();
   await expect(page.getByRole("log")).toHaveAttribute("aria-live", "polite");
-  await page.getByLabel("Minecraft command").fill("say BlockOps browser check");
+  expect(closeConsoleSocket).toBeDefined();
+  await closeConsoleSocket?.();
+  await expect(page.getByText("reconnecting", { exact: true })).toBeVisible({ timeout: 400 });
+  await expect(page.getByText("connected", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  const commandInput = page.getByLabel("Minecraft command");
+  await commandInput.fill("ø".repeat(2049));
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Minecraft did not accept the command.")).toBeVisible();
+  await expect(page.getByText("Command must be at most 4,096 bytes.")).toBeVisible();
+  expect(consoleCommandRequests).toBe(0);
+  await commandInput.fill("say intercepted success");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Intercepted RCON success.")).toBeVisible();
+  await commandInput.press("ArrowUp");
+  await expect(commandInput).toHaveValue("say intercepted success");
+  consoleCommandResponse = "failure";
+  await commandInput.fill("say intercepted failure");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Intercepted RCON failure.")).toBeVisible();
+  consoleCommandResponse = "malformed";
+  await commandInput.fill("say intercepted malformed");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
+  await expect(page.getByText("<script>unsafe command</script>", { exact: true })).toBeHidden();
+
+  malformedConsoleHistory = true;
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
+  await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
+  await expect(page.getByText("<script>unsafe history</script>", { exact: true })).toBeHidden();
+  malformedConsoleHistory = false;
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Players", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
@@ -387,6 +463,10 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("button", { name: "Restore" })).toBeHidden();
   await expect(page.getByRole("link", { name: "Download" })).toBeHidden();
   await page.unroute("**/api/v1/backups");
+
+  await page.goto("/console");
+  await expect(page.getByText("Viewer access is read-only. Ask an administrator for the Operator role to submit Minecraft commands.")).toBeVisible();
+  await expect(page.getByLabel("Minecraft command")).toBeHidden();
   await page.goto("/settings");
   await expect(page.getByText("Restricted area", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
@@ -395,6 +475,9 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByText("Restricted area", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Audit log", exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/console");
+  await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
+  expect(await page.getByRole("region", { name: "Console filters" }).evaluate((filters) => getComputedStyle(filters).flexDirection)).toBe("column");
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   const overflowingElements = await page.evaluate(() => [...document.querySelectorAll("body *")]

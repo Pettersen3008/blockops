@@ -113,34 +113,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .auth-form__description { margin-bottom: 8px; color: var(--muted-foreground); }
 .auth-form > .button { margin-top: 8px; min-height: 48px; }
 
-.console-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.search-input { min-width: 220px; flex: 1; position: relative; display: flex; align-items: center; }
-.search-input > svg { position: absolute; left: 12px; width: 17px; color: var(--muted-foreground); }
-.search-input input { padding-left: 38px; }
-.segmented { min-height: 42px; display: inline-flex; border: 1px solid var(--line-strong); border-radius: 10px; padding: 3px; background: var(--surface); }
-.segmented button { border: 0; border-radius: 7px; padding: 0 12px; color: var(--muted-foreground); background: transparent; text-transform: capitalize; cursor: pointer; }
-.segmented button[aria-pressed="true"] { color: var(--ink); background: var(--surface-soft); font-weight: 700; }
-.terminal-shell { position: relative; overflow: hidden; border: 1px solid #2d3931; border-radius: 15px; background: #0c110e; box-shadow: var(--shadow); }
-.terminal-shell__header { height: 43px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #243028; padding: 0 14px; color: #839087; background: #121914; }
-.terminal-shell__header > div { display: flex; gap: 6px; }
-.terminal-shell__header > div span { width: 8px; height: 8px; border-radius: 50%; background: #3c4a40; }
-.terminal-shell__header > div span:first-child { background: #7e4e47; }
-.terminal-shell__header p { margin: 0; font-family: monospace; font-size: 0.7rem; }
-.terminal { height: clamp(420px, 58vh, 760px); overflow: auto; padding: 12px 0 18px; color: #c3cec6; scrollbar-color: #415045 transparent; }
-.terminal__line { min-height: 25px; display: grid; grid-template-columns: 82px 1fr; gap: 12px; padding: 2px 16px; font: 0.78rem/1.55 "SFMono-Regular", Consolas, monospace; }
-.terminal__line:hover { background: rgba(255,255,255,0.025); }
-.terminal__line time { color: #667269; }
-.terminal__line code { font: inherit; overflow-wrap: anywhere; white-space: pre-wrap; }
-.terminal__line--warning code { color: #d8b56d; }
-.terminal__line--error code { color: #e6867d; }
-.terminal__empty { margin: 80px 20px; color: #6d786f; text-align: center; }
-.jump-live { position: absolute; right: 18px; bottom: 16px; min-height: 38px; border: 1px solid #405147; border-radius: 99px; padding: 0 13px; display: flex; align-items: center; gap: 7px; color: #dbe6dd; background: #243129; box-shadow: 0 8px 24px rgba(0,0,0,.3); cursor: pointer; }
-.jump-live svg { width: 15px; }
-.command-form { margin-top: 12px; display: grid; grid-template-columns: 22px 10px 1fr auto; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 13px; padding: 8px 8px 8px 14px; background: var(--surface); box-shadow: var(--shadow-soft); }
-.command-form > svg { width: 19px; color: var(--primary-hover); }
-.command-form > span { color: var(--muted-foreground); font-family: monospace; }
-.command-form input { min-height: 40px; border: 0; padding: 0; font-family: monospace; box-shadow: none; }
-
 .two-column-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .world-card { position: relative; overflow: hidden; padding: 26px; }
 .world-card h2 { margin-bottom: 10px; font-size: 1.35rem; }
@@ -187,15 +159,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
   .page-header__actions { width: 100%; flex-wrap: wrap; }
   .page-header__actions .button { flex: 1; }
   .breadcrumb > span, .breadcrumb > svg { display: none; }
-  .console-toolbar { align-items: stretch; flex-direction: column; }
-  .search-input { width: 100%; max-width: none; }
-  .segmented { overflow-x: auto; }
-  .terminal { height: 52vh; }
-  .terminal__line { grid-template-columns: 1fr; gap: 0; padding-top: 5px; padding-bottom: 5px; }
-  .terminal__line time { font-size: .66rem; }
-  .terminal-shell__header p { display: none; }
-  .command-form { grid-template-columns: 18px 8px 1fr; }
-  .command-form .button { grid-column: 1 / -1; }
   .world-card { padding: 20px; }
   .world-card__art { margin-bottom: 30px; }
   .modal__actions { flex-direction: column-reverse; }

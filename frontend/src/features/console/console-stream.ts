@@ -1,5 +1,5 @@
-import { consoleLineSchema } from "./console-schemas";
-import type { ConsoleLine } from "./console-schemas";
+import { consoleLineSchema } from "./console-schema";
+import type { ConsoleLine } from "./console-schema";
 
 export type ConsoleConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";
 
@@ -26,14 +26,17 @@ export function connectConsoleStream(
 
   const connect = () => {
     if (stopped) return;
+    timer = undefined;
     onConnection(attempt === 0 ? "connecting" : "reconnecting");
     const nextSocket = createSocket(url);
     socket = nextSocket;
     nextSocket.onopen = () => {
+      if (stopped || socket !== nextSocket) return;
       attempt = 0;
       onConnection("connected");
     };
     nextSocket.onmessage = (event) => {
+      if (stopped || socket !== nextSocket) return;
       if (typeof event.data !== "string") return;
       try {
         const parsed = consoleLineSchema.safeParse(JSON.parse(event.data));
@@ -43,24 +46,36 @@ export function connectConsoleStream(
       }
     };
     nextSocket.onclose = () => {
-      if (stopped) return;
+      if (stopped || socket !== nextSocket || timer !== undefined) return;
+      nextSocket.onopen = null;
+      nextSocket.onmessage = null;
+      nextSocket.onclose = null;
+      nextSocket.onerror = null;
+      socket = undefined;
       attempt += 1;
       onConnection("reconnecting");
       timer = schedule(connect, reconnectDelay(attempt));
     };
-    nextSocket.onerror = () => nextSocket.close();
+    nextSocket.onerror = () => {
+      if (!stopped && socket === nextSocket) nextSocket.close();
+    };
   };
 
   connect();
   return () => {
     stopped = true;
-    if (timer !== undefined) cancelSchedule(timer);
+    if (timer !== undefined) {
+      cancelSchedule(timer);
+      timer = undefined;
+    }
     if (socket) {
-      socket.onopen = null;
-      socket.onmessage = null;
-      socket.onclose = null;
-      socket.onerror = null;
-      socket.close();
+      const activeSocket = socket;
+      socket = undefined;
+      activeSocket.onopen = null;
+      activeSocket.onmessage = null;
+      activeSocket.onclose = null;
+      activeSocket.onerror = null;
+      activeSocket.close();
     }
     onConnection("disconnected");
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consoleCommandSchema, consoleHistorySchema, consoleLineSchema } from "./console-schemas";
+import { consoleCommandSchema, consoleHistorySchema, consoleLineSchema } from "./console-schema";
 
 const line = { sequence: 1, timestamp: "2026-08-17T12:00:00Z", text: "[Server thread/INFO]: Ready" };
 
