@@ -40,8 +40,25 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Integration unavailable" })).toBeVisible();
   await expect(page.getByText("Unavailable", { exact: true }).first()).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  expect(await page.locator("body").evaluate((body) => getComputedStyle(body).backgroundColor)).toBe("rgb(243, 245, 242)");
 
+  await page.getByRole("button", { name: "Use dark theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await page.locator("body").evaluate((body) => getComputedStyle(body).backgroundColor)).toBe("rgb(15, 20, 17)");
+  expect(await page.evaluate(() => localStorage.getItem("blockops-theme"))).toBe("dark");
+  await page.getByRole("button", { name: "Use light theme" }).click();
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
   const restartButton = page.getByRole("button", { name: "Graceful restart" });
+  expect(parseFloat(await restartButton.evaluate((button) => getComputedStyle(button).transitionDuration))).toBeLessThanOrEqual(0.001);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement?.matches("a,button,input,select,textarea,[tabindex='0']"))).toBe(true);
+  await expect(page.locator(":focus-visible")).toHaveCount(1);
+
   await restartButton.click();
   await expect(page.getByRole("heading", { name: "Restart the Minecraft server?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
@@ -85,13 +102,11 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(restartButton).toBeFocused();
   await page.unroute("**/api/v1/server/actions");
-
   const desktopOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
     .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
     .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
     .slice(0, 10));
   expect(desktopOverflow).toEqual([]);
-
   let malformedConsoleHistory = false;
   let consoleHistoryRequests = 0;
   let consoleCommandRequests = 0;
@@ -177,6 +192,21 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByRole("link", { name: "Players", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Worlds", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Worlds", exact: true })).toBeVisible();
+  await page.getByLabel(/Choose a world ZIP/).setInputFiles({
+    name: "browser-check.zip",
+    mimeType: "application/zip",
+    buffer: Buffer.from("browser ZIP metadata check"),
+  });
+  await expect(page.getByText("browser-check.zip", { exact: true })).toBeVisible();
+  const replaceWorldButton = page.getByRole("button", { name: "Replace current world" });
+  await replaceWorldButton.click();
+  await expect(page.getByRole("heading", { name: "Replace the current world?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Replace the current world?" })).toBeHidden();
+  await expect(replaceWorldButton).toBeFocused();
 
   await page.route("**/api/v1/backups", async (route) => {
     if (route.request().method() !== "GET") return route.continue();

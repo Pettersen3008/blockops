@@ -14,12 +14,12 @@ session — read it first, trust it over memory.
 | FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
 | FE-19 reference feature `players` | done | `3a8629f` | reference slice; design review done in `bb3235c`, see log |
 | FE-29 session refetch resilience | done | — | out of order: found in the FE-19 review, gated FE-20 |
-| FE-20 `worlds` | todo | — | |
-| FE-21 `audit` | done | — | query options, URL-owned filters, Tailwind table |
-| FE-22 `backups` | done | — | endpoint boundaries, destructive-action ownership, Tailwind migration |
-| FE-23 `overview` | done | — | endpoint/query boundaries, mutation ownership, Tailwind sections |
-| FE-24 `settings` | done | — | endpoint/query boundaries, mutation surfaces, Tailwind migration; no form library |
-| FE-25 `console` | done | — | **gate:** WebSocket invariants recorded; human review still required before merge |
+| FE-20 `worlds` | done | — | endpoint boundaries, mutation ownership, Tailwind migration |
+| FE-21 `audit` | done | `816f9ec` | query options, URL-owned filters, Tailwind table |
+| FE-22 `backups` | done | `471da7d` | endpoint boundaries, destructive-action ownership, Tailwind migration |
+| FE-23 `overview` | done | `962639e` | endpoint/query boundaries, mutation ownership, Tailwind sections |
+| FE-24 `settings` | done | `b149cc8` | endpoint/query boundaries, mutation surfaces, Tailwind migration; no form library |
+| FE-25 `console` | done | `f8e198e` | **gate:** WebSocket invariants recorded; human review still required before merge |
 | FE-26 delete `application.css` | todo | — | |
 | FE-27 enforcement | todo | — | each rule must be proven to fail |
 | FE-28 verification + budgets | todo | — | **gate:** needs human for mobile/keyboard/visual |
@@ -128,6 +128,17 @@ the start of every session and must stay cheap to load.
 - NOT verified: not exercised against the Go binary; no test for a session that expires while the API is also erroring, where the dashboard now stays up on stale data until a mutation returns 401; Playwright not run
 - Deleted: nothing
 - Follow-ups found (not fixed): the four other features still hold their own copies of the broad-invalidation call, which is D-2c working as decided, but it means the session is refetched on every mutation anywhere; if that cost ever matters the predicate form is the cheap next step
+
+### FE-20 — done — 2026-08-24
+- Changed: split the two world endpoints into `api/`, moved replacement cache invalidation into `use-replace-world.ts`, kept file/dialog reset at the page call site, and moved every Worlds selector from global CSS into component Tailwind utilities
+- Simplest design: the two endpoint files earn one `api/` folder; the single hook and schema stay flat; no component split, query abstraction, effect, memoization, global state, or dependency was added
+- New files: `api/download-world.ts` owns the download URL; `api/replace-world.ts` owns the PUT and response parse; `use-replace-world.ts` owns mutation invalidation
+- State/cache: the page remains the sole owner of selected file, validation error, and confirmation state; TanStack Query owns mutation state; a successful replacement broadly invalidates cached views per D-2c and clears only the initiating Worlds surface
+- Tests: Worlds grew from 2 to 5 page tests covering local rejection, validated upload transport and invalidation, malformed response preservation, focus restore, and permission gating; Playwright now covers a real browser File selection and confirmation cancellation
+- Verified: `pnpm verify` green; 25 files/71 tests; 0 boundary violations; 984.2 kB/517.1 kB gzip build; Playwright 1/1 against temporary Go API and frontend servers; `git diff --check`; old Worlds API/hook imports and CSS selectors absent
+- NOT verified: a successful real replacement against Docker/RCON and actual world data (destructive and integrations unavailable); screen-reader pass; headed MCP session (browser connector unavailable); React Doctor (would download an unapproved latest tool via npm)
+- Deleted: `worlds-api.ts`, `worlds-hooks.ts`, redundant outbound File parsing, and 22 lines of Worlds selectors/responsive overrides from `application.css`
+- Follow-ups found (not fixed): shared `ConfirmDialog` still uses the legacy `modal__actions` selector, already recorded as F-6 and intentionally deferred from the Worlds feature
 
 ### FE-21 — done — 2026-08-24
 - Changed: split Audit into URL filter controls and results, made the empty catalog distinct from no matches, preserved the bounded TanStack table and server order, and moved every Audit selector to Tailwind
