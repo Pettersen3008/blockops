@@ -1,4 +1,4 @@
-import type { ServerAction } from "./overview-schemas";
+import type { ServerAction } from "./overview-schema";
 
 export type OverviewAction = "backup" | ServerAction;
 

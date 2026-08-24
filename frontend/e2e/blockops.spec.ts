@@ -35,10 +35,56 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Integration unavailable" })).toBeVisible();
   await expect(page.getByText("Unavailable", { exact: true }).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Graceful restart" }).click();
+  const restartButton = page.getByRole("button", { name: "Graceful restart" });
+  await restartButton.click();
   await expect(page.getByRole("heading", { name: "Restart the Minecraft server?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByRole("heading", { name: "Restart the Minecraft server?" })).toBeHidden();
+  await expect(restartButton).toBeFocused();
+
+  const stopButton = page.getByRole("button", { name: "Stop", exact: true });
+  await stopButton.click();
+  const stopConfirm = page.getByRole("button", { name: "Stop server" });
+  await expect(stopConfirm).toBeVisible();
+  expect(await stopConfirm.evaluate((button) => getComputedStyle(button).backgroundColor)).toBe("rgb(180, 68, 60)");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(stopButton).toBeFocused();
+
+  await page.route("**/api/v1/backups", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "backup_failed", message: "The backup could not be created safely." } }),
+    });
+  });
+  const backupButton = page.getByRole("button", { name: "Back up now" });
+  await backupButton.click();
+  await page.getByRole("button", { name: "Create backup" }).click();
+  await expect(page.getByText("The backup could not be created safely.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create a consistent backup?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(backupButton).toBeFocused();
+  await page.unroute("**/api/v1/backups");
+
+  await page.route("**/api/v1/server/actions", (route) => route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ error: { code: "server_action_failed", message: "The configured Minecraft container could not be changed." } }),
+  }));
+  await restartButton.click();
+  await page.getByRole("button", { name: "Restart server" }).click();
+  await expect(page.getByText("The configured Minecraft container could not be changed.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Restart the Minecraft server?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(restartButton).toBeFocused();
+  await page.unroute("**/api/v1/server/actions");
+
+  const desktopOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+    .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
+    .slice(0, 10));
+  expect(desktopOverflow).toEqual([]);
 
   await page.getByRole("link", { name: "Console", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
@@ -294,6 +340,59 @@ test("secure first-run and primary operations remain usable when integrations ar
     .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
     .slice(0, 10));
   expect(overflowingElements).toEqual([]);
+
+  await page.unroute("**/api/v1/overview");
+  await page.route("**/api/v1/overview", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+  await page.goto("/overview");
+  await expect(page.getByText("Reading live server state")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Integration unavailable" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back up now" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Graceful restart" })).toHaveCount(0);
+  await expect(page.getByLabel("Server lifecycle controls")).toHaveCount(0);
+  await page.unroute("**/api/v1/overview");
+
+  await page.route("**/api/v1/overview", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ unsafe: "unvalidated" }),
+  }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
+  await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
+  await expect(page.getByText("unvalidated", { exact: true })).toBeHidden();
+  await page.unroute("**/api/v1/overview");
+
+  await page.route("**/api/v1/overview", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      server: { available: true, value: { state: "online", image: `ghcr.io/blockops/${"long-image-name-".repeat(20)}:latest`, uptimeSeconds: 3_900, version: "1.21.8", software: "Paper" } },
+      metrics: { available: true, value: { cpuPercent: 12.3, memoryUsageBytes: 1536, memoryLimitBytes: 2048 } },
+      disk: { available: true, value: { usedBytes: 5 * 1024 ** 3, totalBytes: 10 * 1024 ** 3 } },
+      players: { available: true, value: { online: 2, max: 20, names: ["Zed", "Alex"] } },
+      recentWarnings: [
+        { sequence: 9, timestamp: "2026-08-24T09:59:00Z", text: `[WARN] ${"long warning text ".repeat(30)}` },
+        { sequence: 10, timestamp: "2026-08-24T10:00:00Z", text: "[ERROR] Second signal" },
+      ],
+    }),
+  }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Minecraft server" })).toBeVisible();
+  await expect(page.getByText("1h 5m")).toBeVisible();
+  await expect(page.getByText("1.5 KB / 2.0 KB")).toBeVisible();
+  const warningItems = page.getByRole("heading", { name: "Console warnings" }).locator("xpath=ancestor::section").getByRole("listitem");
+  await expect(warningItems).toHaveCount(2);
+  await expect(warningItems.nth(0)).toContainText("[WARN]");
+  await expect(warningItems.nth(1)).toContainText("[ERROR] Second signal");
+  const overviewOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+    .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
+    .slice(0, 10));
+  expect(overviewOverflow).toEqual([]);
+  await page.unroute("**/api/v1/overview");
 
   expect(pageErrors).toEqual([]);
 });

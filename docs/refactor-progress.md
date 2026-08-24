@@ -17,7 +17,7 @@ session — read it first, trust it over memory.
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | done | — | query options, URL-owned filters, Tailwind table |
 | FE-22 `backups` | done | — | endpoint boundaries, destructive-action ownership, Tailwind migration |
-| FE-23 `overview` | todo | — | largest page, 158 lines |
+| FE-23 `overview` | done | — | endpoint/query boundaries, mutation ownership, Tailwind sections |
 | FE-24 `settings` | todo | — | record the form-library decision |
 | FE-25 `console` | todo | — | **gate:** WebSocket invariants, human review before merge |
 | FE-26 delete `application.css` | todo | — | |
@@ -159,3 +159,18 @@ the start of every session and must stay cheap to load.
 - NOT verified: real successful backup creation with RCON/world data; real destructive delete or restore; remote CI; screen-reader audit; in-app browser session, because authenticated Playwright supplied the browser and layout evidence
 - Deleted: `backups-api.ts`, `backups-hooks.ts`, `backups-keys.ts`, `backup-schemas.ts`, its replaced test path, all 19 Backups-specific CSS selector/override lines, and all Backups fetch stubs
 - Follow-ups found (not fixed): shared `ConfirmDialog` and non-Backups global selectors remain for their existing tickets; no FE-22 follow-up
+
+### FE-23 — done — 2026-08-24
+- Changed: split Overview into explicit GET/lifecycle endpoints, a React-free polling query, explicit hooks, and lifecycle/player/capacity/warning/confirmation components; failed or malformed mutations now keep their originating confirmation and error visible, while validated success alone closes it
+- Simplest design: existing `api`, TanStack Query, Backups' public `useCreateBackup`, native `<meter>`, shared confirmation primitive, and Tailwind cover the feature; no dependency, generic wrapper, mirrored state, memoization, global state, service, factory, or speculative abstraction was added; the ponytail pass removed a redundant page-to-lifecycle state prop
+- New files: `api/get-overview.ts` owns GET `/api/v1/overview`; `api/run-server-action.ts` owns POST `/api/v1/server/actions`; `overview-query.ts` owns the key, fetcher, 10-second poll, and default stale-time choice; `hooks/use-overview.ts` exposes the query; `hooks/use-server-action.ts` owns broad and delayed invalidation; `components/server-lifecycle.tsx`, `player-summary.tsx`, `capacity-section.tsx`, `warnings-section.tsx`, and `overview-confirmation.tsx` own those five UI responsibilities; `overview-schema.ts` owns bounded wire contracts; the three new schema/query/endpoint test files check those boundaries
+- State/cache: TanStack Query solely owns overview, backup, and lifecycle server state; the page solely owns the pending confirmation; validated backup and lifecycle success broadly invalidate unrelated and session keys per D-2c; lifecycle success also preserves the 1.2-second Overview refresh; failure and malformed 2xx responses neither invalidate nor clean up; closing resets only the originating mutation
+- Performance: preserved the 10-second poll and application 5-second stale time; kept server order and render-time derivation; added no memoization because no measured expensive render or referential-stability need exists; final build 988.8 kB, 518.4 kB gzip
+- Tests: Overview now has 27 focused tests for schemas/bounds, endpoint method/body/CSRF/parsing, polling/freshness, loading/retry, unavailable and populated data, formatting/order, permissions, pending state, focus, cancellation, failures, malformed query/mutation success, origin reset, and broad invalidation; full suite is 27 files/90 tests
+- Verified: focused Vitest 5 files/27 tests; `pnpm --config.verify-deps-before-run=warn verify` green; typecheck/lint/90 tests/0 boundary violations/knip/build green; `git diff --check`; old-path, selector, fetch-stub, forbidden-artifact, and package/lockfile proofs clean
+- Browser QA: repository Playwright 1/1 against fresh disposable Go/Rsbuild servers; safe loading, available/unavailable/malformed responses, simulated failed backup/lifecycle actions, cancellation/focus, destructive styling, viewer permissions, keyboard focus, mobile wrapping/no overflow, deep links, and reload passed; no in-app browser was needed beyond this authenticated evidence
+- Review verdict: findings-first correctness review found no remaining in-scope defect after moving cleanup from settlement to validated success; ponytail review found no removable abstraction after the redundant state prop was deleted
+- Git hygiene: detached dirty tree and inherited hunks preserved; `application.css`, `blockops.spec.ts`, and this ledger were hunk-staged so FE-20 and other inherited work stays separate; no push
+- NOT verified: real successful backup, start, stop, or restart against Docker/RCON; screen-reader audit; remote CI; successful destructive flows were intentionally not attempted
+- Deleted: `overview-api.ts`, `overview-hooks.ts`, `overview-keys.ts`, plural schema/test paths, every Overview selector and responsive override in `application.css`, and Overview fetch stubs
+- Follow-ups found (not fixed): shared `ConfirmDialog`, `PageHeader`, async states, status pills, and eyebrow styles still use legacy global selectors owned by later shared-style work, not FE-23

@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { backupSchema } from "@/features/backups";
 
+const boundedNumber = z.number().finite().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const boundedInteger = boundedNumber.int();
+
 function availableSchema<T extends z.ZodType>(valueSchema: T) {
   return z.discriminatedUnion("available", [
     z.object({
@@ -20,34 +23,34 @@ export const serverStateSchema = z.enum(["online", "offline", "starting", "stopp
 
 const serverInfoSchema = z.object({
   state: serverStateSchema,
-  image: z.string().max(512).optional(),
+  image: z.string().min(1).max(512).optional(),
   startedAt: z.iso.datetime({ offset: true }).optional(),
-  uptimeSeconds: z.number().int().nonnegative().optional(),
-  version: z.string().max(128).optional(),
-  software: z.string().max(128).optional(),
+  uptimeSeconds: boundedInteger.optional(),
+  version: z.string().min(1).max(128).optional(),
+  software: z.string().min(1).max(128).optional(),
 });
 
 const serverMetricsSchema = z.object({
-  cpuPercent: z.number().nonnegative(),
-  memoryUsageBytes: z.number().nonnegative(),
-  memoryLimitBytes: z.number().nonnegative(),
+  cpuPercent: boundedNumber,
+  memoryUsageBytes: boundedInteger,
+  memoryLimitBytes: boundedInteger,
 });
 
 const diskMetricsSchema = z.object({
-  usedBytes: z.number().nonnegative(),
-  totalBytes: z.number().nonnegative(),
+  usedBytes: boundedInteger,
+  totalBytes: boundedInteger,
 });
 
 const playerSummarySchema = z.object({
-  online: z.number().int().nonnegative(),
-  max: z.number().int().nonnegative(),
-  names: z.array(z.string().min(1).max(64)),
+  online: boundedInteger,
+  max: boundedInteger,
+  names: z.array(z.string().min(1).max(16)).max(100_000),
 });
 
 const warningLineSchema = z.object({
-  sequence: z.number().int().nonnegative(),
+  sequence: boundedInteger,
   timestamp: z.iso.datetime({ offset: true }),
-  text: z.string().max(16_384),
+  text: z.string().min(1).max(16_384),
 });
 
 export const overviewSchema = z.object({
@@ -60,7 +63,10 @@ export const overviewSchema = z.object({
 });
 
 export const serverActionSchema = z.enum(["start", "stop", "restart"]);
-export const serverActionResponseSchema = z.object({ status: z.string().min(1).max(64) });
+export const serverActionResponseSchema = z.object({
+  status: z.enum(["start requested", "stop requested", "restart requested"]),
+});
 
+export type Overview = z.infer<typeof overviewSchema>;
 export type ServerAction = z.infer<typeof serverActionSchema>;
 export type ServerState = z.infer<typeof serverStateSchema>;
