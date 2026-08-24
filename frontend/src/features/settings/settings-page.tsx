@@ -5,7 +5,8 @@ import { safeErrorMessage } from "@/lib/api/api-error";
 import { DeploymentSettings } from "./components/deployment-settings";
 import { IntegrationSettings } from "./components/integration-settings";
 import { UserSettings } from "./components/user-settings";
-import { useSettings, useUsers } from "./settings-hooks";
+import { useSettings } from "./hooks/use-settings";
+import { useUsers } from "./hooks/use-users";
 
 export function SettingsPage({ session }: { session: Session }) {
   const settings = useSettings();
@@ -19,7 +20,7 @@ export function SettingsPage({ session }: { session: Session }) {
   return (
     <>
       <PageHeader eyebrow="Administrator controls" title="Settings" description="Dashboard users, revocable sessions, encrypted RCON credentials, and immutable deployment boundaries." />
-      <div className="settings-stack">
+      <div className="grid gap-[18px]">
         <IntegrationSettings status={settings.data.rcon} />
         <UserSettings session={session} users={users.data.users} />
         <DeploymentSettings settings={settings.data.deployment} />

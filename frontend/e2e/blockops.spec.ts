@@ -274,6 +274,62 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByText("Never", { exact: true })).toBeVisible();
   await expect(page.getByText("Not available", { exact: true })).toBeVisible();
 
+  await page.route("**/api/v1/settings", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+  await page.reload();
+  await expect(page.getByText("Loading protected settings")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "RCON credentials" })).toBeVisible();
+  await page.unroute("**/api/v1/settings");
+
+  await page.route("**/api/v1/settings", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ unsafe: "unvalidated-settings" }),
+  }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
+  await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
+  await expect(page.getByText("unvalidated-settings", { exact: true })).toBeHidden();
+  await page.unroute("**/api/v1/settings");
+
+  let rconUpdateRequests = 0;
+  await page.route("**/api/v1/settings", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      rcon: { address: "minecraft:25575", configured: true, source: "environment", credentialUpdatesEnabled: true },
+      deployment: { minecraftContainer: "minecraft", worldName: "world", cookieSecure: false, trustedProxyCount: 0, maxUploadBytes: 1024 },
+    }),
+  }));
+  await page.route("**/api/v1/settings/rcon", (route) => {
+    rconUpdateRequests += 1;
+    return route.abort();
+  });
+  await page.reload();
+  await page.getByLabel("RCON address").fill("missing-port");
+  await page.getByLabel("New RCON password").fill("short");
+  await page.getByRole("button", { name: "Update credentials" }).click();
+  await expect(page.getByText("RCON address must use host:port format.")).toBeVisible();
+  await expect(page.getByText("RCON password must be at least 8 characters.")).toBeVisible();
+  expect(rconUpdateRequests).toBe(0);
+  await page.unroute("**/api/v1/settings/rcon");
+  await page.unroute("**/api/v1/settings");
+  await page.reload();
+
+  await page.getByRole("button", { name: "Create user" }).click();
+  await expect(page.getByText(/Username must be 3–32 characters/)).toBeVisible();
+  await expect(page.getByText("Password is required.")).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const settingsOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+    .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
+    .slice(0, 10));
+  expect(settingsOverflow).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   const directRoutes = [
     ["/overview", "Overview"],
     ["/console", "Console"],
@@ -301,6 +357,12 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByLabel("Role").selectOption("viewer");
   await page.getByRole("button", { name: "Create user" }).click();
   await expect(page.getByText(viewerUsername, { exact: true })).toBeVisible();
+  const disableViewer = page.getByRole("button", { name: "Disable" });
+  await disableViewer.click();
+  await expect(page.getByRole("heading", { name: `Disable ${viewerUsername}?` })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: `Disable ${viewerUsername}?` })).toBeHidden();
+  await expect(disableViewer).toBeFocused();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await page.getByLabel("Username").fill(viewerUsername);

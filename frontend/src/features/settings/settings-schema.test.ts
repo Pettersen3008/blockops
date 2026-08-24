@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createUserRequestSchema, rconCredentialsSchema, settingsDataSchema } from "./settings-schemas";
+import { createUserRequestSchema, rconCredentialsSchema, settingsDataSchema } from "./settings-schema";
 
 const settings = {
   rcon: { address: "minecraft:25575", configured: true, source: "environment", credentialUpdatesEnabled: true },

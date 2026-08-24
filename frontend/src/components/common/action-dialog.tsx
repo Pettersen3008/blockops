@@ -1,4 +1,4 @@
-import type { FormEvent, PropsWithChildren } from "react";
+import type { FormEvent, PropsWithChildren, ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,7 @@ export function ConfirmDialog({
   confirmLabel,
   dangerous = false,
   busy = false,
+  error,
   onConfirm,
   onClose,
 }: {
@@ -50,6 +51,7 @@ export function ConfirmDialog({
   confirmLabel: string;
   dangerous?: boolean;
   busy?: boolean;
+  error?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -59,6 +61,7 @@ export function ConfirmDialog({
   };
   return (
     <Modal open={open} title={title} description={description} onClose={onClose}>
+      {error}
       <form onSubmit={submit} className="modal__actions">
         <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
         <Button type="submit" variant={dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : confirmLabel}</Button>
