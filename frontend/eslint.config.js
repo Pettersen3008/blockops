@@ -47,6 +47,10 @@ export default tseslint.config(
     },
     rules: {
       "blockops/kebab-case-files": "error",
+      "no-restricted-syntax": [
+        "error",
+        { selector: "ExportAllDeclaration", message: "Use explicit named exports." },
+      ],
       "@typescript-eslint/consistent-type-imports": [
         "error",
         { fixStyle: "inline-type-imports" },
@@ -54,6 +58,24 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
+    files: ["src/features/**/*-{query,schema}.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { paths: [{ name: "react", message: "Query and schema modules must stay React-free." }] },
+      ],
+    },
+  },
+  {
+    files: ["src/**/components/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { paths: [{ name: "@/lib/api/api", message: "Components receive data through feature hooks." }] },
       ],
     },
   },

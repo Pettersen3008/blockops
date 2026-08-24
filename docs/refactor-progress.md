@@ -223,3 +223,9 @@ the start of every session and must stay cheap to load.
 - Bundle: CSS is 76.6 kB / 16.5 kB gzip, compared with the FE-15 baseline's 68.8 kB / 15.7 kB gzip; asset names and split output differ, so this is a comparison rather than an attribution to one selector
 - NOT verified: the production Playwright journey and manual seven-route light/dark/mobile/keyboard/overflow checks. Chromium is not installed and this task does not authorize downloading it; screen-reader testing and remote CI also remain unverified
 - Deleted: all 148 lines of `frontend/src/app/styles/application.css` and its global import. No state or cache behavior changed.
+
+### FE-27 — done — 2026-08-24
+- Changed: added ESLint enforcement against `export *`, React imports in pure feature query/schema modules, and direct API-client imports in component files
+- Existing enforcement: dependency-cruiser already rejects cycles and cross-feature internals; TypeScript ESLint already rejects `any`; React Hooks, kebab-case filenames, Knip dead-code checks, and CI's `pnpm verify` step were already active
+- Proof: temporary violations for every listed rule failed, including a cycle and cross-feature internal import; all scratch files were deleted before the final `pnpm --config.verify-deps-before-run=warn verify` passed with 28 files/138 tests and zero dependency-cruiser violations
+- NOT verified: remote CI, production Playwright, and manual browser checks remain unavailable locally because Chromium is not installed. No state/cache behavior changed and no dependency was added.
