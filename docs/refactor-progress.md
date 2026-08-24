@@ -13,6 +13,7 @@ session — read it first, trust it over memory.
 | FE-17 rename + filename lint | done | `7e9266b` | scripted 103 path changes |
 | FE-18 api helper | done | `9094b32` | API owns CSRF via injected query-cache getter |
 | FE-19 reference feature `players` | done | `3a8629f` | reference slice; design review done in `bb3235c`, see log |
+| FE-29 session refetch resilience | done | — | out of order: found in the FE-19 review, gated FE-20 |
 | FE-20 `worlds` | todo | — | |
 | FE-21 `audit` | todo | — | |
 | FE-22 `backups` | todo | — | |
@@ -115,3 +116,15 @@ the start of every session and must stay cheap to load.
 - NOT verified: not run against the Go binary and Playwright not run this pass; the row-header cell was not eyeballed in either theme, only its class merge checked; focus restore after a *successful* action, where the trigger relabels or unmounts, is still uncovered; Base UI's autofocus target in the reason dialog unchecked; no screen-reader pass on the rowheader change; no real RCON action; remote CI not run
 - Deleted: `actionDetails()`, the redundant outbound `parse()`, the duplicate page-level error Notice, the dialog's template-string remount key, the page's copy of the schema's own error message, the `!players.data` branch, the `?? []` allocation, the per-call `TextEncoder`, and the test's hardcoded copy of the overview cache key
 - Follow-ups found (not fixed): **F-1** `authentication-boundary.tsx:32` renders a full-screen error on `session.isError`, the session query has `retry: false`, and D-2c invalidates it on every player action, so one transient background refetch failure replaces the whole dashboard mid-keystroke; fix is `session.isError && !session.data`, own ticket before FE-20. **F-2** route constants for `app/routing` (`router.tsx` writes `"overview"`, `routes.ts` writes `"/overview"`). **F-3** `worlds-page.tsx` has the same success-callback conflation this pass removed from players. **F-4** `worlds-api.ts` re-parses an already-typed `File` and throws a raw `ZodError`. **F-5** dependency-cruiser's `pathNot` whitelist names `keys.ts`/`creation.ts`, neither of which exists. **F-6** `ConfirmDialog`'s footer still uses `modal__actions`. **F-7** shared async-state and page-header still emit legacy classes. **F-8** the identifier shares the row-header cell, so the row header's accessible name includes the UUID; its own column would make it terser
+
+### FE-29 — done — 2026-08-18
+- Changed: a session that has loaded once now survives a failed background refetch (`authentication-boundary.tsx`)
+- Why: `getSession` maps 401 to null rather than to an error, so `session.isError` only fires for non-auth failures — a network blip, a 500, a malformed body. The boundary treated all of them as "signed out" and replaced the whole dashboard. D-2c refetches this query after every server-state mutation and the query does not retry, so one blip during a player action wiped the page mid-keystroke
+- Simplest design: one added condition, `!session.data`. No retry policy change, no change to D-2c, no new state. The three outcomes the boundary already had are unchanged; only the case where a good session is still in hand moved
+- Abstraction: none added
+- State/cache: unchanged. TanStack Query still owns the session; stale-but-present session data is now preferred over an error screen while a refetch is failing
+- Tests: new `authentication-boundary.test.tsx`, 3 cases — dashboard survives a failed refetch after a real invalidateQueries(); a session that never loads still gets the full-screen error; a 401 still reaches the login screen. Verified by reverting the condition and confirming the first case fails
+- Verified: `pnpm verify` green; 25 files/68 tests; 0 boundary violations; 982.9 kB/516.7 kB gzip
+- NOT verified: not exercised against the Go binary; no test for a session that expires while the API is also erroring, where the dashboard now stays up on stale data until a mutation returns 401; Playwright not run
+- Deleted: nothing
+- Follow-ups found (not fixed): the four other features still hold their own copies of the broad-invalidation call, which is D-2c working as decided, but it means the session is refetched on every mutation anywhere; if that cost ever matters the predicate form is the cheap next step

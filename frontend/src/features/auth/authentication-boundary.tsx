@@ -29,7 +29,13 @@ export function AuthenticationBoundary() {
     );
   }
   if (setup.data?.required) return <SetupScreen />;
-  if (session.isError) {
+  // A session that has loaded once survives a failed background refetch. getSession maps
+  // 401 to null rather than to an error, so reaching here with data still in hand means the
+  // API blipped — it does not mean the operator was signed out. This matters because broad
+  // invalidation (decision D-2c) refetches this query after every server-state mutation, so
+  // without the data check a single failed refetch would replace the whole dashboard
+  // mid-action, and the session query does not retry.
+  if (session.isError && !session.data) {
     return (
       <FullScreenState>
         <Notice tone="danger">{safeErrorMessage(session.error)}</Notice>
