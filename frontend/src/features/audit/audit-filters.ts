@@ -1,5 +1,17 @@
-import { auditOutcomeFilterSchema } from "./audit-schemas";
-import type { AuditEvent, AuditOutcomeFilter } from "./audit-schemas";
+import { z } from "zod";
+import { auditOutcomeFilterSchema } from "./audit-schema";
+import type { AuditEvent, AuditOutcomeFilter } from "./audit-schema";
+
+export type AuditFilters = {
+  query: string;
+  outcome: AuditOutcomeFilter;
+};
+
+export function parseAuditSearchParams(searchParams: URLSearchParams): AuditFilters {
+  const query = z.string().nullable().transform((value) => value ?? "").parse(searchParams.get("q"));
+
+  return { query, outcome: parseOutcomeFilter(searchParams.get("outcome")) };
+}
 
 export function parseOutcomeFilter(value: string | null): AuditOutcomeFilter {
   const parsed = auditOutcomeFilterSchema.safeParse(value);

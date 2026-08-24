@@ -164,7 +164,7 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .unavailable svg { width: 19px; flex: none; color: var(--warning); }
 .unavailable p { margin: 0; }
 
-.console-toolbar, .audit-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.console-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .search-input { min-width: 220px; flex: 1; position: relative; display: flex; align-items: center; }
 .search-input > svg { position: absolute; left: 12px; width: 17px; color: var(--muted-foreground); }
 .search-input input { padding-left: 38px; }
@@ -226,14 +226,6 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
 .retention-note > svg { width: 21px; color: var(--primary-hover); }
 .retention-note h2 { margin: 0 0 4px; color: var(--ink); }
 .retention-note p { margin: 0; }
-
-.audit-tools { padding: 14px; }
-.table-card { overflow: hidden; }
-.data-table__scroll { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
-.data-table th { height: 46px; padding: 0 14px; color: var(--muted-foreground); background: var(--surface-raised); font-size: .7rem; letter-spacing: .06em; text-align: left; text-transform: uppercase; white-space: nowrap; }
-.data-table td { min-height: 54px; border-top: 1px solid var(--line); padding: 10px 14px; vertical-align: middle; white-space: nowrap; }
-.details-code { max-width: 260px; display: block; overflow: hidden; color: var(--muted-foreground); text-overflow: ellipsis; }
 
 .settings-stack { display: grid; gap: 18px; }
 .settings-section { min-width: 0; padding: 24px; overflow-wrap: anywhere; }
@@ -302,7 +294,7 @@ input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 
   .inline-facts { grid-template-columns: 1fr 1fr; }
   .metric-grid { grid-template-columns: 1fr; }
   .metric-card { min-height: 145px; }
-  .console-toolbar, .audit-tools { align-items: stretch; flex-direction: column; }
+  .console-toolbar { align-items: stretch; flex-direction: column; }
   .search-input { width: 100%; max-width: none; }
   .segmented { overflow-x: auto; }
   .terminal { height: 52vh; }

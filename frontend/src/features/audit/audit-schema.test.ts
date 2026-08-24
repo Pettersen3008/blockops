@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditCatalogSchema } from "./audit-schemas";
+import { auditCatalogSchema } from "./audit-schema";
 
 const event = {
   id: "0123456789abcdef0123456789abcdef",
@@ -12,7 +12,7 @@ const event = {
   details: { role: "administrator" },
 };
 
-describe("audit schemas", () => {
+describe("audit schema", () => {
   it("accepts the bounded audit catalog contract", () => {
     expect(auditCatalogSchema.safeParse({ events: [event] }).success).toBe(true);
   });

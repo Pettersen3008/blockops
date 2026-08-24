@@ -15,7 +15,7 @@ session — read it first, trust it over memory.
 | FE-19 reference feature `players` | done | `3a8629f` | reference slice; design review done in `bb3235c`, see log |
 | FE-29 session refetch resilience | done | — | out of order: found in the FE-19 review, gated FE-20 |
 | FE-20 `worlds` | todo | — | |
-| FE-21 `audit` | todo | — | |
+| FE-21 `audit` | done | — | query options, URL-owned filters, Tailwind table |
 | FE-22 `backups` | todo | — | |
 | FE-23 `overview` | todo | — | largest page, 158 lines |
 | FE-24 `settings` | todo | — | record the form-library decision |
@@ -128,3 +128,18 @@ the start of every session and must stay cheap to load.
 - NOT verified: not exercised against the Go binary; no test for a session that expires while the API is also erroring, where the dashboard now stays up on stale data until a mutation returns 401; Playwright not run
 - Deleted: nothing
 - Follow-ups found (not fixed): the four other features still hold their own copies of the broad-invalidation call, which is D-2c working as decided, but it means the session is refetched on every mutation anywhere; if that cost ever matters the predicate form is the cheap next step
+
+### FE-21 — done — 2026-08-24
+- Changed: split Audit into URL filter controls and results, made the empty catalog distinct from no matches, preserved the bounded TanStack table and server order, and moved every Audit selector to Tailwind
+- Simplest design: the one endpoint, query config, hook, schema, controls, and results stay flat; no API/hooks/components folder, mutation, global state, request wrapper, dependency, memo, or deferred render was added
+- New files: `get-audit-events.ts` owns the explicit GET and parse; `audit-query.ts` owns React-free query options; `use-audit-events.ts` owns the feature hook; `audit-schema.ts` owns the wire/search enums and 200-row bound; `audit-filter-controls.tsx` owns URL inputs; `audit-results.tsx` owns pure filtering and the table; `audit-schema.test.ts` checks the bound; `audit-route.test.tsx` checks the permission guard
+- State/cache/URL: TanStack Query solely owns the catalog with the application default 5s stale time; router search params solely own `q`/`outcome`; invalid or missing outcomes replace-canonicalize to `all`; filtering stays render-derived and replace navigation preserves deep-link, reload, and back/forward behavior
+- Performance: the server request and schema cap work at 200 rows, so synchronous filtering is cheaper and clearer than the deleted `useMemo`/`useDeferredValue`; TanStack Table remains because it preserves the installed table semantics without a replacement abstraction
+- Tests: strict MSW covers loading, failure/retry, malformed 200, empty/no-match, all outcome tones, every case-insensitive field, safe 180-character details truncation, server order, timestamps, unauthenticated copy, URL restore/update/normalization/history, responsive scroll semantics, permission protection, and the 200-event bound; 26 files/80 tests
+- Verified: focused Audit 4 files/15 tests; `pnpm --config.verify-deps-before-run=warn verify` green; 0 dependency violations; knip clean except the inherited CSS hint; production build 993.4 kB/520.3 kB gzip; `git diff --check`; old Audit paths/selectors/fetch stubs absent
+- Browser QA: Playwright 1/1 twice against fresh disposable databases and current servers covered real populated Audit data plus intercepted loading, malformed, empty and no-match catalogs, URL replace/deep-link/reload/back-forward, filters/search, viewer restriction, keyboard focus, 390px table scrolling, and no horizontal page overflow; both disposable databases were deleted
+- Review: findings-first correctness review found no unresolved FE-21 defect; ponytail review removed the private key/schema constants and an unnecessary test provider, net -20 lines; final verdict `Lean already. Ship.`
+- Git hygiene: package/lockfiles unchanged; pnpm-generated store/workspace artifacts removed; FE-21 uses hunk staging so inherited shared-file and earlier-ticket changes remain outside its detached-HEAD commit; no push
+- NOT verified: screen-reader announcement quality; authenticated visual inspection in the in-app browser, whose independent session reached sign-in only; remote CI; real production-host serving rather than the verified production build plus current dev server
+- Deleted: `audit-api.ts`, `audit-hooks.ts`, `audit-keys.ts`, plural schema/test paths, Audit global selectors, fetch stubs, and speculative memo/deferred filtering
+- Follow-ups found (not fixed): none
