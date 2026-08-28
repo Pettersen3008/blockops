@@ -1,115 +1,53 @@
 # AGENTS.md
 
-Non-negotiable rules for the BlockOps frontend. Read before editing `frontend/`.
+BlockOps is a Go control plane with an embedded React dashboard for one Dockerized
+Minecraft server. Read this before any change. Frontend rules live in
+[`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-These rules are the frontend contract.
+## Verify before you claim done
 
-## The one rule
+| Lane | Command | Required for |
+| --- | --- | --- |
+| Backend | `cd backend && go test -race ./... && go vet ./...` | Any Go or API change |
+| Frontend | `bun run --cwd frontend verify` | Any frontend change |
+| Browser | Production Go binary plus the relevant Playwright spec | User-visible workflows |
+| Compose | `docker compose config --quiet` | Deployment changes |
+| Repository | `git diff --check` | Everything |
 
-**Complexity must earn its existence, and important behavior must stay visible at the call site.**
+`make test` and `make build` cover the first two lanes. Remote CI, real-server
+behavior, and destructive flows must be reported separately. Passing unit tests
+do not stand in for them.
 
-Everything below is that rule applied.
+## The boundary that must not break
 
-## Naming
+The browser cannot address RCON, the Docker Engine, SQLite, or world files
+directly. Every phase of this product keeps it that way.
 
-- Files are kebab-case: `player-row.tsx`, `use-players.ts`, `players-api.ts`.
-- React identifiers stay PascalCase: `player-row.tsx` exports `PlayerRow`.
-- Hooks: `use-players.ts` exports `usePlayers`.
-- No `Impl`, `Manager`, `Service`, `Handler`, `Helper`, `Base`, `Abstract`.
-- No default `-card` / `-container` / `-wrapper` / `-item` unless that is the real term.
-- Enforced by `eslint` filename rule — a violation fails `bun run --cwd frontend verify`.
+- Minecraft input travels the RCON path only. No host shell, no `os/exec`, no
+  Docker exec, no arbitrary container name, no outbound URL fetch, no general
+  file browsing.
+- Everything crossing a trust boundary is untrusted until parsed: request bodies,
+  RCON output, archive entries, upstream responses. Parse at the boundary.
+- Paths derive from validated configuration, never from request data. Archive
+  extraction rejects absolute and traversal paths, links, devices, and unsupported
+  file types.
+- Only the Docker guard mounts the socket, and only for the configured container.
+- Server authorization is the enforcement point. UI visibility is a mirror of it.
+- Secrets never reach the browser, structured logs, or audit details.
 
-## HTTP
+Full model in [`docs/SECURITY.md`](docs/SECURITY.md), runtime ownership and
+consistency protocols in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Update
+both, plus `backend/internal/httpapi/openapi.yaml`, when behavior or boundaries
+change.
 
-`api.get|post|put|delete` return `unknown`. Parse at the call site.
+## Add one smallest runnable check
 
-```ts
-export async function getPlayers() {
-  const data = await api.get("/api/v1/players");
+Every branch, parser, migration, destructive path, and security decision gets one.
+Not one test per branch of everything else.
 
-  return playersSchema.parse(data);
-}
-```
+## Report
 
-Method, URL, body, and schema must all be readable in the calling function. No
-`httpRequest(path, schema)`. No `playersApi = { get }` object wrappers.
-
-## Runtime validation
-
-Everything crossing a trust boundary is `unknown` until parsed: HTTP responses,
-WebSocket frames, search params, `localStorage`. Types come from `z.infer`, never
-from a hand-written parallel interface. Never `as Player` on network data.
-
-## State ownership
-
-One owner per piece of state.
-
-| State | Owner |
-|---|---|
-| Server | TanStack Query |
-| Shareable / URL | router search params |
-| Local UI | `useState` / `useReducer` |
-| Shared client | Zustand — only if genuinely shared, not installed today |
-| Derived | computed during render |
-
-Never mirror query data into `useState`. Effects synchronize with systems outside
-React; they do not derive data.
-
-## TanStack Query
-
-- Reusable config via `queryOptions()`.
-- Feature-facing hooks are good: `usePlayers()` wrapping `useQuery(playersQuery())`.
-- Invalidation lives next to the mutation that causes it.
-- No custom hook that only renames a TanStack hook.
-
-## Features
-
-`frontend/src/features/<feature>/`. Folders reflect real responsibilities — a
-feature without domain logic gets no `domain/` folder. Public surface is
-`index.ts` with named exports; no `export *`. Inside a feature, import directly.
-Never reach into another feature's internals.
-
-## Feature shape
-
-`features/players/` is the worked example. Copy the rules, not its folder list.
-
-- A folder once a responsibility has two or more non-test files. `players` earns
-  `api/`, `hooks/` and `components/`. It did not earn `schemas/` for one schema.
-- One file per endpoint, always.
-- React-free modules sit at the feature root: `<feature>-query.ts` for the key,
-  fetcher and freshness policy, `<feature>-schema.ts` for the wire contract and
-  its limits. Neither may import React, so a route loader can prefetch without
-  pulling in a component.
-- A per-feature `AGENTS.md` only when an invariant spans files — `console`'s
-  WebSocket lifecycle earns one. Otherwise the comment goes at the call site.
-- A feature with nothing to put in a folder gets no folder. `worlds` is
-  correctly flat.
-
-## Styling
-
-Tailwind utilities in components. One global stylesheet (`styles/globals.css`)
-for the Tailwind import, shadcn tokens, theme variables, fonts, and genuine
-global behavior. No feature selectors in global CSS. No CSS-in-JS. No per-component
-CSS files.
-
-## Dependencies
-
-Bun only. Before adding anything: can the platform, React, or an installed
-dependency do it? A new dependency needs written justification in the PR body.
-
-## Performance
-
-Optimize measured work, not theoretical renders. `useMemo` / `useCallback` /
-`memo` need a reason: profiling, referential stability a library requires, or
-genuinely expensive work. They are not decoration.
-
-## Before you claim done
-
-```bash
-bun run --cwd frontend verify
-```
-
-Every non-trivial change reports: what changed, why it is the simplest design that
-works, new files and their one job, state/cache behavior changes, tests
-added, commands run, **what was not verified**, and what old code was deleted.
-Never write "production ready" without evidence.
+Every non-trivial change reports what changed, why it is the simplest design that
+works, new files and their one job, state and cache behavior changes, tests added,
+commands run, **what was not verified**, and what old code was deleted. Never write
+"production ready" without evidence.
