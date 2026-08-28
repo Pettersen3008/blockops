@@ -1,9 +1,10 @@
 #!/usr/bin/env sh
 # Asserts the rendered Compose model, not the source YAML: the published ingress
-# stays on loopback, the guard and RCON ports stay unpublished, both roots stay
-# read-only with all capabilities dropped, each service probes its own health
-# endpoint, and every required mount is present.
-# Usage: scripts/compose-assert.sh [extra docker compose -f arguments...]
+# stays on loopback, the guard and RCON ports stay unpublished, both BlockOps
+# roots stay read-only with all capabilities dropped, each service probes its own
+# health endpoint, and every required mount is present. The rendered model never
+# reaches stdout, so it is safe to run against the integration fixture's secrets.
+# Usage: scripts/compose-assert.sh [extra docker compose arguments...]
 set -eu
 
 model=$(docker compose "$@" config --format json)
@@ -26,12 +27,14 @@ check "no service publishes the guard or RCON port" \
 check "the guard publishes no host port" \
 	'(.services["docker-guard"].ports // []) == []'
 
-check "both roots are read-only" \
-	'[.services[].read_only] | length == 2 and all(. == true)'
-check "both services drop all capabilities" \
-	'[.services[].cap_drop] | length == 2 and all(index("ALL") != null)'
-check "both services forbid privilege escalation" \
-	'[.services[].security_opt] | all(index("no-new-privileges:true") != null)'
+# Named rather than "every service" so an added service, such as the integration
+# fixture's Minecraft server, cannot vacuously satisfy the BlockOps hardening.
+check "both BlockOps roots are read-only" \
+	'[.services.dashboard, .services["docker-guard"]] | all(.read_only == true)'
+check "both BlockOps services drop all capabilities" \
+	'[.services.dashboard, .services["docker-guard"]] | all(.cap_drop | index("ALL") != null)'
+check "both BlockOps services forbid privilege escalation" \
+	'[.services.dashboard, .services["docker-guard"]] | all(.security_opt | index("no-new-privileges:true") != null)'
 
 check "the guard probes its own listener, not the dashboard health route" \
 	'.services["docker-guard"].healthcheck.test | join(" ") | contains("http://127.0.0.1:2375/health")'
@@ -43,9 +46,11 @@ check "the dashboard waits for a healthy guard" \
 check "the dashboard mounts data, backups, and Minecraft data" \
 	'[.services.dashboard.volumes[].target] | contains(["/data", "/backups", "/minecraft"])'
 check "only the guard mounts the Docker socket, read-only" \
-	'[.services[].volumes[] | select(.target == "/var/run/docker.sock")] | length == 1 and .[0].read_only == true'
+	'[.services[].volumes // [] | .[] | select(.target == "/var/run/docker.sock")] | length == 1 and .[0].read_only == true'
 check "the dashboard never mounts the Docker socket" \
 	'[.services.dashboard.volumes[].source] | all(. != "/var/run/docker.sock")'
+check "no service other than the guard reaches the Docker socket" \
+	'[.services | to_entries[] | select(.key != "docker-guard") | .value.volumes // [] | .[].source] | all(. != "/var/run/docker.sock")'
 
 check "the control networks stay internal" \
 	'[.networks["app-control"].internal, .networks["minecraft-control"].internal] | all(. == true)'

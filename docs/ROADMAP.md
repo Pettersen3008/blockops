@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 is `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
+P1-01 and P1-02 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -67,7 +67,7 @@ A normal `docker compose up` publishes only the dashboard and reports honest hea
 
 **Done when.** Both platforms follow the same documented startup path with no manual network attachment, and neither 2375 nor 25575 appears in published host ports.
 
-### P1-02: add a disposable real-server fixture
+### P1-02: add a disposable real-server fixture (complete)
 
 Depends on P1-01. One command starts an isolated stack and a real Minecraft Java server with deterministic credentials and disposable data.
 
@@ -78,6 +78,8 @@ Depends on P1-01. One command starts an isolated stack and a real Minecraft Java
 
 **Done when.** A contributor reproduces the fixture locally and in CI with one documented command, and a second run starts cleanly after cleanup.
 
+The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-architecture index digest and the Minecraft version is pinned, but the Paper build itself is resolved from `api.papermc.io` on each first boot, so Minecraft needs a plain egress network beside the internal RCON one. P1-07 records the tested build.
+
 ### P1-03: add the safe real-integration journey
 
 Depends on P1-02. A separate browser spec verifies available integrations. The existing mocked unavailable-integration journey stays untouched.
@@ -87,6 +89,7 @@ Depends on P1-02. A separate browser spec verifies available integrations. The e
 - Execute only the fixed safe command `list`. Assert its response and audit event.
 - Create a consistent backup, verify catalog and download, and assert the server resumes saving and stays online.
 - No page routing for integration endpoints. The test must fail if it accidentally intercepts real behavior.
+- Poll for software and version rather than asserting once. Paper answers RCON `version` asynchronously, so `operations.parseVersion` returns empty strings for the first seconds after the fixture reports healthy, while state, metrics, disk, and the player catalog are already correct.
 
 **Done when.** CI distinguishes frontend, backend, and real Minecraft integration failures from each other.
 

@@ -119,3 +119,18 @@ jobs:
       - run: docker build --tag blockops:ci .
       - name: Confirm non-root runtime user
         run: test "$(docker image inspect blockops:ci --format '{{.Config.User}}')" = "10001:10001"
+
+  integration-fixture:
+    runs-on: ubuntu-latest
+    needs: [container]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Starts the production dashboard and guard against a real Paper server and
+      # waits on all three health checks. Secrets are generated inside the runner
+      # and never printed. The safe integration journey (P1-03) runs here next.
+      - name: Start the disposable real-server fixture
+        run: scripts/integration.sh up
+      - name: Remove the fixture and its volumes
+        if: always()
+        run: scripts/integration.sh down

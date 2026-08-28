@@ -1,0 +1,80 @@
+# Disposable real-server fixture for the integration test lanes. Layered on
+# compose.yaml so the dashboard and guard keep exactly the production hardening
+# the integration journey is supposed to exercise:
+#   docker compose -f compose.yaml -f compose.integration.yaml ...
+# Always start it through scripts/integration.sh, which generates the test-only
+# secrets and passes --env-file so the operator's .env cannot leak in.
+name: blockops-integration
+
+services:
+  dashboard:
+    image: blockops:integration
+    environment:
+      BLOCKOPS_MINECRAFT_CONTAINER: blockops-integration-minecraft
+      BLOCKOPS_RCON_ADDRESS: blockops-integration-minecraft:25575
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${BLOCKOPS_PORT:-8099}:8080"
+    volumes:
+      # The generated env file sets MINECRAFT_DATA_SOURCE to this same volume, so
+      # the base file resolves to it too. Stated here so the mount is readable
+      # without chasing the generator.
+      - minecraft-data:/minecraft
+
+  docker-guard:
+    image: blockops:integration
+
+  minecraft:
+    # Pinned multi-architecture index digest for itzg/minecraft-server:java21.
+    image: itzg/minecraft-server@sha256:410d0567d4903c3c1a814e633c45b3c6a5919ea36073b114600f05de63d40e27
+    # The guard matches this exact name; it must not depend on Compose numbering.
+    container_name: blockops-integration-minecraft
+    environment:
+      EULA: "TRUE"
+      TYPE: PAPER
+      VERSION: "1.21.4"
+      MEMORY: 1G
+      UID: "10001"
+      GID: "10001"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${BLOCKOPS_RCON_PASSWORD:?scripts/integration.sh generates this}
+      RCON_PORT: "25575"
+      # Nothing plays here, so a flat world with a small view distance keeps
+      # first boot and every later start fast.
+      LEVEL_TYPE: FLAT
+      SPAWN_PROTECTION: "0"
+      VIEW_DISTANCE: "4"
+    mem_limit: 2g
+    # Loopback only, and 25575 is never published. The default is offset from
+    # 25565 so the fixture cannot collide with a real server on the same host.
+    ports:
+      - "127.0.0.1:${BLOCKOPS_GAME_PORT:-25566}:25565"
+    volumes:
+      - minecraft-data:/data
+    networks:
+      # RCON stays on the internal network. The fixture is not hermetic: a first
+      # boot downloads the pinned Paper build, so it also needs plain egress.
+      # Nothing is published on it.
+      - minecraft-control
+      - minecraft-egress
+    # A first boot downloads the pinned Paper build and generates the world, so
+    # the image's own retry budget is too short. mc-health is the ready signal.
+    healthcheck:
+      test: ["CMD", "mc-health"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 90
+
+networks:
+  # compose.yaml pins this to the global name blockops-minecraft. Rename it so
+  # the fixture can never attach to a production server's RCON network.
+  minecraft-control:
+    name: blockops-integration-minecraft-control
+    internal: true
+  minecraft-egress:
+
+volumes:
+  minecraft-data:

@@ -115,7 +115,7 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
 
 ## Local development
 
-Go 1.25.13+, Node.js 24+, and npm are required.
+Go 1.25.13+ and Bun 1.4.0+ are required.
 
 ```sh
 mkdir -p runtime/minecraft runtime/backups
@@ -141,6 +141,16 @@ make build
 Deployment changes run `make compose-config`, which renders the Compose model and asserts loopback-only ingress, unpublished 2375 and 25575, read-only roots, dropped capabilities, per-service health checks, and the required mounts. CI runs the same assertions for both documented data sources.
 
 With the development servers running, execute the real-browser smoke journey with `make test-e2e`. Set `BLOCKOPS_E2E_CHROME_PATH` when using an already-installed Chromium/Chrome binary; CI installs Chromium and tests the assembled production server.
+
+### Disposable real-server fixture
+
+`make integration-up` starts the production dashboard and guard from `compose.yaml`, layered with `compose.integration.yaml`, against a real Paper server on the separate Compose project `blockops-integration`. It waits on all three health checks, so Minecraft's own readiness probe gates the command, and it prints the container logs if any service fails to become healthy.
+
+`scripts/integration.sh` generates the RCON password and encryption key into `runtime/integration.env` when that file is absent, and deletes it on `down`. `runtime/` is gitignored, and the script redacts both values out of the failure logs it prints. It passes that file with `--env-file`, so your own `.env` cannot leak into the fixture.
+
+`make integration-down` removes the project and its volumes, and touches nothing else. The Minecraft data volume, the RCON network, and the container name are all project-scoped, the dashboard publishes `127.0.0.1:8099`, and the game port publishes `127.0.0.1:25566`. Both ports are offset from the production defaults so the fixture cannot collide with a real server on the same host. Set `BLOCKOPS_PORT` or `BLOCKOPS_GAME_PORT` before `up` if either is taken.
+
+The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-architecture index digest and the Minecraft version is pinned, but a first boot resolves the Paper build from `api.papermc.io`, so Minecraft gets a plain egress network beside the internal RCON one. Nothing is published on it.
 
 ## API and repository map
 

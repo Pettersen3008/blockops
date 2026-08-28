@@ -1,4 +1,4 @@
-.PHONY: dev-api dev-web test test-e2e build compose-config
+.PHONY: dev-api dev-web test test-e2e build compose-config integration-up integration-down
 
 dev-api:
 	cd backend && \
@@ -28,3 +28,9 @@ build:
 compose-config:
 	docker compose config --quiet
 	scripts/compose-assert.sh
+
+integration-up:
+	scripts/integration.sh up
+
+integration-down:
+	scripts/integration.sh down
