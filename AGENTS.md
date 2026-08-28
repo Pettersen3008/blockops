@@ -18,7 +18,7 @@ Everything below is that rule applied.
 - Hooks: `use-players.ts` exports `usePlayers`.
 - No `Impl`, `Manager`, `Service`, `Handler`, `Helper`, `Base`, `Abstract`.
 - No default `-card` / `-container` / `-wrapper` / `-item` unless that is the real term.
-- Enforced by `eslint` filename rule — a violation fails `pnpm verify`.
+- Enforced by `eslint` filename rule — a violation fails `bun run --cwd frontend verify`.
 
 ## HTTP
 
@@ -95,7 +95,7 @@ CSS files.
 
 ## Dependencies
 
-pnpm only. Before adding anything: can the platform, React, or an installed
+Bun only. Before adding anything: can the platform, React, or an installed
 dependency do it? A new dependency needs written justification in the PR body.
 
 ## Performance
@@ -107,7 +107,7 @@ genuinely expensive work. They are not decoration.
 ## Before you claim done
 
 ```bash
-pnpm verify
+bun run --cwd frontend verify
 ```
 
 Every non-trivial change reports: what changed, why it is the simplest design that

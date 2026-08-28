@@ -1,10 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/**/*.test.{ts,tsx}",
-    "src/components/ui/{input,sheet,skeleton}.tsx"
+    "src/index.tsx",
+    "src/**/*.test.{ts,tsx}"
   ],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["tailwindcss", "tw-animate-css"],
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css"
+  ],
   "ignoreExportsUsedInFile": true
 }

@@ -31,6 +31,7 @@ services:
       - blockops-backups:/backups
       - ${MINECRAFT_DATA_SOURCE:-minecraft-data}:/minecraft
     networks:
+      - ingress
       - app-control
       - minecraft-control
     read_only: true
@@ -64,6 +65,7 @@ services:
       - ALL
 
 networks:
+  ingress:
   app-control:
     internal: true
   minecraft-control:

@@ -1,16 +1,5 @@
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table";
-import { EmptyState } from "@/components/common/async-state";
-import { StatusPill } from "@/components/common/status-pill";
-import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, EmptyState, StatusPill, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@blockops/ui";
 import { formatDate } from "@/formatters";
 import { matchesAuditFilters } from "./audit-filters";
 import type { AuditFilters } from "./audit-filters";

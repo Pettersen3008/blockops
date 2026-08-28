@@ -90,27 +90,27 @@ unmocked request fails a scratch test.
 
 ---
 
-## FE-16 — pnpm
+## FE-16 — Bun
 
 **Goal:** every documented command works. Zero source changes.
 
 **Do**
 
-- `pnpm import` → `pnpm-lock.yaml`, delete `package-lock.json`.
-- `"packageManager": "pnpm@<version>"` in `package.json`.
-- Add `"verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm boundaries && pnpm knip && pnpm build"`.
-- Update `Dockerfile`, `Makefile`, `compose.yaml`, CI → `pnpm install --frozen-lockfile`.
+- Migrate `pnpm-lock.yaml` to `bun.lock`, then delete it after the full gate passes.
+- Pin `"packageManager": "bun@1.4.0"` in the root package.
+- Add `"verify": "bun run typecheck && bun run lint && bun run test && bun run boundaries && bun run knip && bun run build"`.
+- Update `Dockerfile`, `Makefile`, `compose.yaml`, and CI to use `bun install --frozen-lockfile`.
 
-**Files:** `frontend/package.json`, `pnpm-lock.yaml`, `Dockerfile`, `Makefile`,
+**Files:** root `package.json`, `bun.lock`, `frontend/package.json`, `Dockerfile`, `Makefile`,
 `compose.yaml`, CI workflow. No files under `src/`.
 
 **Risk:** the Go binary embeds `frontend/dist`. A broken build here breaks the
 backend, not just the frontend.
 
-**Verify:** `pnpm verify` green. Docker image builds. Run the Go server and load the
+**Verify:** `bun run --cwd frontend verify` green. Docker image builds. Run the Go server and load the
 dashboard from the embedded assets. Deep link + refresh still resolve.
 
-**Done when:** no `package-lock.json` anywhere, CI green on pnpm.
+**Done when:** `bun.lock` is the only JavaScript lockfile and CI is green on Bun.
 
 ---
 
@@ -133,7 +133,7 @@ at a glance and later tickets are content-only.
 
 **Files:** all of `src/`. Zero content diffs outside import specifiers.
 
-**Verify:** `git log --follow` still traces renamed files. `pnpm verify` green.
+**Verify:** `git log --follow` still traces renamed files. `bun run --cwd frontend verify` green.
 `git diff --stat` shows only renames and import lines — any other change in the
 diff is a mistake in this ticket.
 
@@ -217,7 +217,7 @@ features/players/
 - Testing Library: dialog opens by role, reason field required for actions that need
   it, focus returns to the trigger on close, action hidden without permission.
 - Profile the table with React DevTools. Record the render count in the PR body.
-- `pnpm verify` green.
+- `bun run --cwd frontend verify` green.
 
 **Done when:** we would copy this. Review it critically and fix it here — every
 problem left in this feature ships seven more times.
@@ -245,7 +245,7 @@ Order is deliberate: cheapest first, riskiest last.
 4. Adopt `queryOptions()` + `use*` hooks.
 5. Delete the code you replaced, **in the same PR**.
 6. Verify: MSW malformed-response test, mutation invalidation test, user-visible
-   component tests, `pnpm verify`, and the feature exercised against the Go server.
+   component tests, `bun run --cwd frontend verify`, and the feature exercised against the Go server.
 
 **Not allowed:** adding a folder because FE-19 has one. A feature with no domain
 logic gets no `domain/`. A feature with two components does not need `components/`
@@ -280,7 +280,7 @@ behavior is the most likely casualty. Compare bundle CSS size against FE-15.
   component file.
 - eslint: no `any`, hooks rules, no `export *`, filename rule from FE-17.
 - knip: fail on dead files, dead exports, unused dependencies.
-- CI blocks merge on `pnpm verify`.
+- CI blocks merge on `bun run --cwd frontend verify`.
 
 **Verify:** each rule fails on a deliberately introduced violation, then passes once
 reverted. A rule not proven to fail is not a rule.
@@ -304,7 +304,7 @@ reverted. A rule not proven to fail is not a rule.
 - Delete this file and `FRONTEND_REFACTOR.md`. Keep `AGENTS.md`.
 
 **Done when:** every finding in FRONTEND_REFACTOR.md §1 is closed or waived with a
-written reason, and `pnpm verify` plus E2E are green against the production build.
+written reason, and `bun run --cwd frontend verify` plus E2E are green against the production build.
 
 ---
 

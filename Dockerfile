@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24-alpine3.24 AS frontend-build
-WORKDIR /build/frontend
-RUN corepack enable
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --ignore-scripts
-COPY frontend/ ./
-RUN pnpm build
+FROM oven/bun:1.4.0-alpine AS frontend-build
+WORKDIR /build
+COPY package.json bun.lock bunfig.toml ./
+COPY frontend/package.json frontend/package.json
+RUN bun install --frozen-lockfile --ignore-scripts
+COPY frontend/ frontend/
+RUN bun run --cwd frontend build
 
 FROM golang:1.25.13-alpine3.24 AS backend-build
 WORKDIR /build/backend

@@ -1,7 +1,5 @@
 import type { FormEvent } from "react";
-import { Modal } from "@/components/common/action-dialog";
-import { Notice } from "@/components/common/notice";
-import { Button } from "@/components/ui/button";
+import { Button, Modal, ModalActions, Notice } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 
 export type BackupIntent =
@@ -49,12 +47,12 @@ export function BackupActionDialog({
     <Modal open title={intentCopy.title} description={intentCopy.description} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4">
         {error ? <Notice tone="danger">{safeErrorMessage(error)}</Notice> : null}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <ModalActions>
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button type="submit" variant={intent.type === "create" ? "default" : "destructive"} disabled={busy}>
             {busy ? "Working…" : intentCopy.label}
           </Button>
-        </div>
+        </ModalActions>
       </form>
     </Modal>
   );

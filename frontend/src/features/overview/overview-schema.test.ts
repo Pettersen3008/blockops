@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { overviewSchema } from "./overview-schema";
 
 const unavailable = { available: false, message: "Integration unavailable." };

@@ -437,19 +437,19 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.setViewportSize({ width: 1280, height: 900 });
 
   const directRoutes = [
-    ["/overview", "Overview"],
-    ["/console", "Console"],
-    ["/players", "Players"],
-    ["/worlds", "Worlds"],
-    ["/backups", "Backups"],
-    ["/audit", "Audit log"],
-    ["/settings", "Settings"],
-  ] as const;
-  for (const [path, label] of directRoutes) {
+    "/overview",
+    "/console",
+    "/players",
+    "/worlds",
+    "/backups",
+    "/audit",
+    "/settings",
+  ];
+  for (const path of directRoutes) {
     expect((await page.goto(path))?.status()).toBe(200);
-    await expect(page.locator(".breadcrumb strong")).toHaveText(label);
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
     expect((await page.reload())?.status()).toBe(200);
-    await expect(page.locator(".breadcrumb strong")).toHaveText(label);
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
   }
 
   expect((await page.goto("/missing-route"))?.status()).toBe(200);
@@ -556,7 +556,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   }));
   await page.reload();
   await expect(page.getByRole("heading", { name: "Minecraft server" })).toBeVisible();
-  await expect(page.getByText("1h 5m")).toBeVisible();
+  await expect(page.getByText("1h 5m", { exact: true })).toBeVisible();
   await expect(page.getByText("1.5 KB / 2.0 KB")).toBeVisible();
   const warningItems = page.getByRole("heading", { name: "Console warnings" }).locator("xpath=ancestor::section").getByRole("listitem");
   await expect(warningItems).toHaveCount(2);

@@ -1,4 +1,4 @@
-import { ConfirmDialog } from "@/components/common/action-dialog";
+import { ConfirmDialog } from "@blockops/ui";
 import { confirmationFor, type OverviewAction } from "../overview-actions";
 
 export function OverviewConfirmation({

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, delay, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "bun:test";
 import { authKeys } from "@/features/auth";
 import type { Role, Session } from "@/features/auth";
 import { formatDate } from "@/formatters";
@@ -180,7 +180,7 @@ describe("OverviewPage", () => {
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Create backup" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(csrf).toBe("csrf-token");
+    expect(csrf as string | null).toBe("csrf-token");
     expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(authKeys.session())?.isInvalidated).toBe(true);
     await waitFor(() => expect(trigger).toHaveFocus());

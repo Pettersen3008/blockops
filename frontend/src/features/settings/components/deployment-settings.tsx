@@ -1,5 +1,5 @@
 import { ServerCog } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card } from "@blockops/ui";
 import { formatBytes } from "@/formatters";
 import type { SettingsData } from "../settings-schema";
 

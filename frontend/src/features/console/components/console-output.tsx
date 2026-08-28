@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, CirclePause, CirclePlay, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@blockops/ui";
 import { mergeConsoleLines } from "../console-lines";
 import type { ConsoleLine } from "../console-schema";
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { backupDownloadUrl } from "./api/backup-download-url";
 import { backupCatalogSchema, backupSchema, restoreBackupResponseSchema } from "./backup-schema";
 
@@ -7,7 +7,7 @@ const backup = {
   sizeBytes: 1024,
   createdAt: "2026-08-17T12:00:00Z",
   createdBy: "admin",
-  status: "ready",
+  status: "ready" as const,
 };
 
 describe("backup contracts", () => {

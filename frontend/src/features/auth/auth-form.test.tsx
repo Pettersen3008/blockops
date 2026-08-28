@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "bun:test";
 import { AuthForm } from "./auth-form";
 
 function renderSetupForm(onSubmit = vi.fn()) {
@@ -36,7 +36,7 @@ describe("AuthForm", () => {
     await user.type(screen.getByLabelText("Password"), "Strong setup pass 42!");
     await user.click(screen.getByRole("button", { name: "Create administrator" }));
 
-    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({
       username: "admin.user",
       password: "Strong setup pass 42!",

@@ -1,9 +1,14 @@
-import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, expect } from "bun:test";
+import * as matchers from "@testing-library/jest-dom/matchers";
 import { setupServer } from "msw/node";
-import { afterAll, afterEach, beforeAll } from "vitest";
 
 export const server = setupServer();
+
+expect.extend(matchers);
+
+// Bun runs every test file in one process, so a shared jsdom drifts past the 1s default.
+configure({ asyncUtilTimeout: 5_000 });
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
@@ -11,14 +16,3 @@ afterEach(() => {
   server.resetHandlers();
 });
 afterAll(() => server.close());
-
-if (!HTMLDialogElement.prototype.showModal) {
-  HTMLDialogElement.prototype.showModal = function showModal() {
-    this.open = true;
-  };
-}
-if (!HTMLDialogElement.prototype.close) {
-  HTMLDialogElement.prototype.close = function close() {
-    this.open = false;
-  };
-}

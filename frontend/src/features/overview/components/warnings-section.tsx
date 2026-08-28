@@ -1,5 +1,5 @@
 import { Activity, TriangleAlert } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card } from "@blockops/ui";
 import type { Overview } from "../overview-schema";
 
 export function WarningsSection({ warnings }: { warnings: Overview["recentWarnings"] }) {

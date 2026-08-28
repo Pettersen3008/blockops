@@ -1,5 +1,5 @@
 import { Cpu, Database, HardDrive, MemoryStick } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card } from "@blockops/ui";
 import { formatBytes, formatDate } from "@/formatters";
 import type { Overview } from "../overview-schema";
 import { MetricCard } from "./metric-card";

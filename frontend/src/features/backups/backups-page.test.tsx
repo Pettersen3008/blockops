@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "bun:test";
 import { authKeys } from "@/features/auth";
 import type { Session } from "@/features/auth";
 import { formatBytes, formatDate } from "@/formatters";
@@ -130,7 +130,7 @@ describe("BackupsPage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create backup" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(csrfHeader).toBe("csrf-token");
+    expect(csrfHeader as string | null).toBe("csrf-token");
     await waitFor(() => expect(catalogRequests).toBeGreaterThan(1));
     expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(authKeys.session())?.isInvalidated).toBe(true);
@@ -177,7 +177,7 @@ describe("BackupsPage", () => {
     await user.click(trigger);
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete backup" }));
     await waitFor(() => expect(deleted).toBe(true));
-    expect(csrfHeader).toBe("csrf-token");
+    expect(csrfHeader as string | null).toBe("csrf-token");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true);
   });

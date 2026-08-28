@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useOutletContext } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { HttpResponse, http } from "msw";
 import { server } from "@/test/setup";
 import { AuthenticationBoundary } from "./authentication-boundary";

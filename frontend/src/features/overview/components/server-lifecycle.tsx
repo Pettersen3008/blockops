@@ -1,9 +1,8 @@
 import { Play, Power } from "lucide-react";
-import { StatusPill } from "@/components/common/status-pill";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button, Card, StatusPill } from "@blockops/ui";
 import { formatDuration } from "@/formatters";
-import type { Overview, ServerAction, ServerState } from "../overview-schema";
+import type { Overview, ServerAction } from "../overview-schema";
+import { serverStateTone } from "../server-state";
 import { Unavailable } from "./unavailable";
 
 export function ServerLifecycle({
@@ -32,7 +31,7 @@ export function ServerLifecycle({
             <p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Configured Java server</p>
             <h2>{server.available ? "Minecraft server" : "Integration unavailable"}</h2>
           </div>
-          <StatusPill tone={stateTone(state)}>{state}</StatusPill>
+          <StatusPill tone={serverStateTone(state)}>{state}</StatusPill>
         </div>
         {server.available ? (
           <dl className="mt-[23px] mb-0 grid grid-cols-2 gap-4 min-[1181px]:grid-cols-4 [&_div]:min-w-0 [&_dt]:mb-[5px] [&_dt]:text-xs [&_dt]:text-muted-foreground [&_dd]:m-0 [&_dd]:overflow-hidden [&_dd]:text-sm [&_dd]:font-semibold [&_dd]:text-ellipsis [&_dd]:whitespace-nowrap">
@@ -51,11 +50,4 @@ export function ServerLifecycle({
       ) : null}
     </Card>
   );
-}
-
-function stateTone(state: ServerState): "good" | "warn" | "bad" | "neutral" {
-  if (state === "online") return "good";
-  if (state === "starting" || state === "stopping") return "warn";
-  if (state === "offline") return "bad";
-  return "neutral";
 }

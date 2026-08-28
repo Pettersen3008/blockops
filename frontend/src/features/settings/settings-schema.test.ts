@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createUserRequestSchema, rconCredentialsSchema, settingsDataSchema } from "./settings-schema";
 
 const settings = {

@@ -32,7 +32,7 @@ Execute in this order. Skip anything already `done` in the progress file.
 | Ticket | What | Profile to use |
 |---|---|---|
 | FE-15 | Baseline + MSW | `mech` |
-| FE-16 | pnpm | `mech` |
+| FE-16 | Bun | `mech` |
 | FE-17 | Kebab-case rename + filename lint rule | `mech` |
 | FE-18 | `api` helper, delete `httpClient` | `design` |
 | FE-19 | Reference feature `players` | `design` |
@@ -58,7 +58,7 @@ For each ticket:
 2. **State it back** in two sentences: what changes, what must not change. If those
    two sentences are not clear from the plan, that is a hard stop.
 3. **Do the work.** This ticket's scope only.
-4. **Verify.** Run `pnpm verify`. Run the ticket's specific verification steps from
+4. **Verify.** Run `bun run --cwd frontend verify`. Run the ticket's specific verification steps from
    the plan — they are listed per ticket and are not optional.
 5. **Commit.** One commit per ticket, matching the existing convention:
    `refactor(frontend): <what> [FE-NN]`. Use the type that fits (`build:` for
@@ -81,7 +81,7 @@ These are the only reasons to stop before the queue is empty:
   not fully cover. Stop for review.
 - **FE-28 needs a human.** Mobile, keyboard-only, and visual checks are not yours
   to sign off. Do the profiling and bundle comparison, then hand over the list.
-- **`pnpm verify` fails twice on the same ticket.** Do not attempt a third fix.
+- **`bun run --cwd frontend verify` fails twice on the same ticket.** Do not attempt a third fix.
   Report the failure output verbatim and stop.
 - **You need a new dependency.** MSW in FE-15 is the only one pre-approved.
   Anything else: stop and justify.
@@ -111,7 +111,7 @@ Anything else — keep going.
   `queryOptions`, Zod v4, Tailwind v4, and shadcn/Base UI all have current docs.
   Use context7. Do not write API signatures from memory.
 - **The app works after every commit.** Build it, serve it from the Go binary, load
-  a deep link. A green `pnpm verify` with a broken embedded build is not green.
+  a deep link. A green `bun run --cwd frontend verify` with a broken embedded build is not green.
 
 ## Per-ticket report
 
@@ -120,7 +120,7 @@ Append to the log in `docs/refactor-progress.md`. Short lines, no prose:
 ```
 ### FE-NN — done — 2026-08-17
 - Changed: <one line>
-- Verified: pnpm verify green; <ticket-specific checks + results>
+- Verified: bun run --cwd frontend verify green; <ticket-specific checks + results>
 - NOT verified: <honest list — write "nothing" only if that is true>
 - Deleted: <old code removed>
 - Follow-ups found (not fixed): <out-of-scope items, or "none">

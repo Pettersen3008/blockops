@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "bun:test";
 import type { Session } from "@/features/auth";
 import { configureCsrfToken } from "@/lib/api/api";
 import { server } from "@/test/setup";
@@ -21,6 +21,8 @@ const lines = [
 ];
 
 const sockets: OpenWebSocket[] = [];
+const originalWebSocket = globalThis.WebSocket;
+const scrollTo = vi.fn();
 
 class OpenWebSocket {
   onopen: WebSocket["onopen"] = null;
@@ -35,16 +37,16 @@ class OpenWebSocket {
   }
 }
 
-Object.defineProperty(HTMLElement.prototype, "scrollTo", { value: vi.fn(), configurable: true });
+Object.defineProperty(HTMLElement.prototype, "scrollTo", { value: scrollTo, configurable: true });
 
 afterEach(() => {
   sockets.length = 0;
   configureCsrfToken(() => undefined);
-  vi.unstubAllGlobals();
+  Object.defineProperty(globalThis, "WebSocket", { value: originalWebSocket, configurable: true });
 });
 
 function renderConsole(currentSession = session) {
-  vi.stubGlobal("WebSocket", OpenWebSocket);
+  Object.defineProperty(globalThis, "WebSocket", { value: OpenWebSocket, configurable: true });
   configureCsrfToken(() => currentSession.csrfToken);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const result = render(<QueryClientProvider client={queryClient}><ConsolePage session={currentSession} /></QueryClientProvider>);
@@ -80,12 +82,12 @@ describe("ConsolePage", () => {
     expect(screen.getByRole("log")).toHaveAttribute("aria-live", "polite");
     const log = screen.getByRole("log");
     log.focus();
-    vi.mocked(log.scrollTo).mockClear();
+    scrollTo.mockClear();
     sockets[0]?.onmessage?.call(sockets[0] as unknown as WebSocket, new MessageEvent("message", {
       data: JSON.stringify({ sequence: 5, timestamp: "2026-08-17T12:04:00Z", text: "live and focused" }),
     }));
     expect(await screen.findByText("live and focused")).toBeVisible();
-    expect(log.scrollTo).toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenCalled();
     expect(log).toHaveFocus();
   });
 
@@ -116,7 +118,7 @@ describe("ConsolePage", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Command completed")).toBeVisible();
     expect(requests).toEqual([{ command: "say hello" }]);
-    expect(csrfHeader).toBe("csrf-token");
+    expect(csrfHeader as string | null).toBe("csrf-token");
     await waitFor(() => expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true));
     await waitFor(() => expect(command).toHaveValue(""));
     await user.type(command, "{ArrowUp}");

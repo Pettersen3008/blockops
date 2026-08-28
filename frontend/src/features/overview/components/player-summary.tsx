@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card } from "@blockops/ui";
 import type { Overview } from "../overview-schema";
 import { Unavailable } from "./unavailable";
 

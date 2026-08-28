@@ -1,5 +1,4 @@
-import { ErrorState, LoadingState } from "@/components/common/async-state";
-import { PageHeader } from "@/components/common/page-header";
+import { ErrorState, LoadingState, PageHeader } from "@blockops/ui";
 import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { DeploymentSettings } from "./components/deployment-settings";

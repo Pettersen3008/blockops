@@ -1,9 +1,6 @@
 import { memo } from "react";
 import { Ban, Crown, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, Badge, Button, TableCell, TableHead, TableRow } from "@blockops/ui";
 import type { PendingPlayerAction, Player } from "../player-schema";
 
 const AVATAR_INITIALS_LENGTH = 2;

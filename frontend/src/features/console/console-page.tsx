@@ -1,7 +1,4 @@
-import { ErrorState, LoadingState } from "@/components/common/async-state";
-import { Notice } from "@/components/common/notice";
-import { PageHeader } from "@/components/common/page-header";
-import { StatusPill } from "@/components/common/status-pill";
+import { ErrorState, LoadingState, Notice, PageHeader, StatusPill } from "@blockops/ui";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
 import { safeErrorMessage } from "@/lib/api/api-error";

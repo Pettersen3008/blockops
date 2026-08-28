@@ -1,9 +1,5 @@
 import { type FormEvent, useId, useState } from "react";
-import { Modal } from "@/components/common/action-dialog";
-import { Field } from "@/components/common/field";
-import { Notice } from "@/components/common/notice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Field, Input, Modal, ModalActions, Notice } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { playerActionCopy } from "../player-action-copy";
 import { MAX_REASON_BYTES, playerActionRequestSchema } from "../player-schema";
@@ -74,10 +70,10 @@ export function PlayerActionDialog({
           </Field>
         ) : null}
         {error ? <Notice tone="danger">{safeErrorMessage(error)}</Notice> : null}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <ModalActions>
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button type="submit" variant={copy.dangerous ? "destructive" : "default"} disabled={busy}>{busy ? "Working…" : copy.confirmLabel}</Button>
-        </div>
+        </ModalActions>
       </form>
     </Modal>
   );

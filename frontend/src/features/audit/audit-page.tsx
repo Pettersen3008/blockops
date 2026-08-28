@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { ErrorState, LoadingState } from "@/components/common/async-state";
-import { PageHeader } from "@/components/common/page-header";
+import { ErrorState, LoadingState, PageHeader } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { AuditFilterControls } from "./audit-filter-controls";
 import { parseAuditSearchParams } from "./audit-filters";

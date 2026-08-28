@@ -1,8 +1,6 @@
 import { type FormEvent, useId, useState } from "react";
 import { UserPlus } from "lucide-react";
-import { Field } from "@/components/common/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Field, Input } from "@blockops/ui";
 import { MAX_NAME_LENGTH, playerNameSchema } from "../player-schema";
 
 /**

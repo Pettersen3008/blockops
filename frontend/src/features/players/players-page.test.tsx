@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "bun:test";
 import { authKeys } from "@/features/auth";
 import type { Session } from "@/features/auth";
 import { configureCsrfToken } from "@/lib/api/api";
@@ -94,7 +94,7 @@ describe("PlayersPage", () => {
     await waitFor(() => expect(requests).toEqual([
       { action: "kick", name: "Steve", reason: "Repeated griefing" },
     ]));
-    expect(csrfHeader).toBe("csrf-token");
+    expect(csrfHeader as string | null).toBe("csrf-token");
     await waitFor(() => expect(catalogRequests).toBeGreaterThan(1));
     await waitFor(() => expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true));
     // D-2c reaches the session query too. That breadth is intended, and it is why the

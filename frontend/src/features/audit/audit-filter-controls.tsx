@@ -1,6 +1,5 @@
 import { Search } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, Input } from "@blockops/ui";
 import type { AuditFilters } from "./audit-filters";
 import type { AuditOutcomeFilter } from "./audit-schema";
 

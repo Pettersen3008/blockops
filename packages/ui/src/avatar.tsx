@@ -1,0 +1,34 @@
+import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
+
+import { cn } from "./cn";
+
+export function Avatar({
+  className,
+  size = "default",
+  ...props
+}: AvatarPrimitive.Root.Props & { size?: "default" | "lg" }) {
+  return (
+    <AvatarPrimitive.Root
+      data-slot="avatar"
+      data-size={size}
+      className={cn(
+        "relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 dark:after:mix-blend-lighten",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function AvatarFallback({ className, ...props }: AvatarPrimitive.Fallback.Props) {
+  return (
+    <AvatarPrimitive.Fallback
+      data-slot="avatar-fallback"
+      className={cn(
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
+}

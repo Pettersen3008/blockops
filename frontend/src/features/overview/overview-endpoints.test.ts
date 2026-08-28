@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "bun:test";
 import { configureCsrfToken } from "@/lib/api/api";
 import { server } from "@/test/setup";
 import { getOverview } from "./api/get-overview";

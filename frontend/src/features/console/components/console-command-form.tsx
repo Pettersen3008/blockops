@@ -1,7 +1,6 @@
 import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
 import { Send, TerminalSquare } from "lucide-react";
-import { Notice } from "@/components/common/notice";
-import { Button } from "@/components/ui/button";
+import { Button, Notice } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { consoleCommandSchema } from "../console-schema";
 import { useExecuteConsoleCommand } from "../hooks/use-execute-console-command";

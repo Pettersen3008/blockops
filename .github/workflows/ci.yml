@@ -33,13 +33,14 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm verify
-      - run: pnpm audit --audit-level=high
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile --ignore-scripts
+        working-directory: .
+      - run: bun run verify
+      - run: bun audit --audit-level=high
+        working-directory: .
 
   browser:
     runs-on: ubuntu-latest
@@ -50,13 +51,11 @@ jobs:
         with:
           go-version: 1.25.13
           cache-dependency-path: backend/go.sum
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-        working-directory: frontend
-      - run: pnpm build
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run build
         working-directory: frontend
       - name: Assemble production web assets
         run: cp -R frontend/dist/. backend/internal/webui/dist/
@@ -64,7 +63,7 @@ jobs:
         run: go build -trimpath -o "$RUNNER_TEMP/blockops" ./cmd/blockops
         working-directory: backend
       - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: bun run playwright install --with-deps chromium
         working-directory: frontend
       - name: Start production server
         env:
@@ -91,7 +90,7 @@ jobs:
       - name: Run production browser smoke test
         env:
           BLOCKOPS_E2E_URL: http://127.0.0.1:8080
-        run: pnpm test:e2e
+        run: bun run test:e2e
         working-directory: frontend
 
   container:

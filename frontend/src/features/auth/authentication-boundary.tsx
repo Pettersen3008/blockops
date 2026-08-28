@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
-import { LoadingState } from "@/components/common/async-state";
-import { Notice } from "@/components/common/notice";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingState, Notice } from "@blockops/ui";
 import { PRODUCT_NAME } from "@/config";
 import { safeErrorMessage } from "@/lib/api/api-error";
-import { AppBrand } from "@/components/common/app-brand";
+import { AppBrand } from "@/components/app-brand";
 import { AuthForm } from "./auth-form";
 import {
   useLoginMutation,

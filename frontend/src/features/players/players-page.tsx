@@ -2,18 +2,7 @@ import { useCallback, useState } from "react";
 import { Search } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
-import { EmptyState, ErrorState, LoadingState } from "@/components/common/async-state";
-import { PageHeader } from "@/components/common/page-header";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, EmptyState, ErrorState, Input, LoadingState, PageHeader, Table, TableBody, TableCaption, TableHead, TableHeader, TableRow } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { AllowlistForm } from "./components/allowlist-form";
 import { PlayerActionDialog } from "./components/player-action-dialog";

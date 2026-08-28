@@ -5,9 +5,13 @@
 *.db-wal
 backend/internal/webui/dist/assets/
 frontend/dist/
-frontend/node_modules/
+frontend/bundle-analysis.json
+frontend/bundle-analysis.md
+node_modules/
 frontend/playwright-report/
 frontend/test-results/
 runtime/
 coverage/
 *.prof
+/backend/blockops
+node_modules

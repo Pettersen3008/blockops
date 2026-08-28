@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { matchesAuditFilters, parseAuditSearchParams, parseOutcomeFilter } from "./audit-filters";
 import type { AuditEvent } from "./audit-schema";
 

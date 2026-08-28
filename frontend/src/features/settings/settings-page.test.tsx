@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "bun:test";
 import type { Session, User } from "@/features/auth";
 import { configureCsrfToken } from "@/lib/api/api";
 import { server } from "@/test/setup";
@@ -135,7 +135,7 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Create user" }));
 
     await waitFor(() => expect(requests).toEqual([{ username: "second-admin", password: "Strong passphrase 42!", role: "administrator" }]));
-    expect(csrf).toBe("csrf-token");
+    expect(csrf as string | null).toBe("csrf-token");
     await waitFor(() => expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true));
     expect(screen.getByLabelText("Username", { exact: true })).toHaveValue("");
     expect(screen.getByLabelText("Temporary password")).toHaveValue("");
@@ -248,7 +248,7 @@ describe("SettingsPage", () => {
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Disable user" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(csrf).toBe("csrf-token");
+    expect(csrf as string | null).toBe("csrf-token");
     expect(screen.getAllByRole("button", { name: "Disable" })).toHaveLength(1);
   });
 
@@ -268,7 +268,7 @@ describe("SettingsPage", () => {
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Revoke sessions" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(csrf).toBe("csrf-token");
+    expect(csrf as string | null).toBe("csrf-token");
     await waitFor(() => expect(queryClient.getQueryState(unrelatedQueryKey)?.isInvalidated).toBe(true));
     await waitFor(() => expect(trigger).toHaveFocus());
   });

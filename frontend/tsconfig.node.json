@@ -4,7 +4,7 @@
     "target": "ES2023",
     "lib": ["ES2023"],
     "module": "ESNext",
-    "types": ["node"],
+    "types": ["bun-types"],
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
@@ -13,5 +13,5 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["rsbuild.config.ts", "vitest.config.ts"]
+  "include": ["build.ts", "dev.ts"]
 }

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import type { Session } from "@/features/auth";
 import { server } from "@/test/setup";
 import { Component as AuditRoute } from "./audit-route";

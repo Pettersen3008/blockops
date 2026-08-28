@@ -1,11 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Cable, KeyRound, LockKeyhole } from "lucide-react";
-import { Field } from "@/components/common/field";
-import { Notice } from "@/components/common/notice";
-import { StatusPill } from "@/components/common/status-pill";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button, Card, Field, Input, Notice, StatusPill } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { useUpdateRcon } from "../hooks/use-update-rcon";
 import { rconCredentialsSchema } from "../settings-schema";
