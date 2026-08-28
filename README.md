@@ -115,8 +115,9 @@ With the development servers running, execute the real-browser smoke journey wit
 - [`frontend/`](frontend) — browser client.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — trust boundaries and runtime flow.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — controls, residual risks, and deployment checklist.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — deliberately deferred features.
-- [`docs/DELIVERY_BRIEF.md`](docs/DELIVERY_BRIEF.md) — observable acceptance criteria.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phase plan, open decisions, and rejected features.
+- [`packages/ui`](packages/ui) — shared interface components.
+- [`AGENTS.md`](AGENTS.md) — verification commands and the rules a change must not break.
 
 The temporary name is centralized in [`frontend/src/config.ts`](frontend/src/config.ts) and [`backend/internal/config/config.go`](backend/internal/config/config.go), with Compose/image labels in the root deployment files.
 
