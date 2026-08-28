@@ -1,4 +1,4 @@
-.PHONY: dev-api dev-web test test-e2e build compose-config integration-up integration-down
+.PHONY: dev-api dev-web test test-e2e test-integration build compose-config integration-up integration-down
 
 dev-api:
 	cd backend && \
@@ -20,6 +20,11 @@ test:
 
 test-e2e:
 	bun run --cwd frontend test:e2e
+
+# Needs a running fixture: make integration-up first, make integration-down after.
+test-integration:
+	BLOCKOPS_E2E_INTEGRATION=true BLOCKOPS_E2E_URL=http://127.0.0.1:$${BLOCKOPS_PORT:-8099} \
+		bun run --cwd frontend test:e2e
 
 build:
 	bun run --cwd frontend build

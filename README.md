@@ -140,7 +140,7 @@ make build
 
 Deployment changes run `make compose-config`, which renders the Compose model and asserts loopback-only ingress, unpublished 2375 and 25575, read-only roots, dropped capabilities, per-service health checks, and the required mounts. CI runs the same assertions for both documented data sources.
 
-With the development servers running, execute the real-browser smoke journey with `make test-e2e`. Set `BLOCKOPS_E2E_CHROME_PATH` when using an already-installed Chromium/Chrome binary; CI installs Chromium and tests the assembled production server.
+With the development servers running, execute the real-browser smoke journey with `make test-e2e`. It is fully mocked and needs no Docker. Set `BLOCKOPS_E2E_CHROME_PATH` when using an already-installed Chromium/Chrome binary; CI installs Chromium and tests the assembled production server.
 
 ### Disposable real-server fixture
 
@@ -151,6 +151,14 @@ With the development servers running, execute the real-browser smoke journey wit
 `make integration-down` removes the project and its volumes, and touches nothing else. The Minecraft data volume, the RCON network, and the container name are all project-scoped, the dashboard publishes `127.0.0.1:8099`, and the game port publishes `127.0.0.1:25566`. Both ports are offset from the production defaults so the fixture cannot collide with a real server on the same host. Set `BLOCKOPS_PORT` or `BLOCKOPS_GAME_PORT` before `up` if either is taken.
 
 The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-architecture index digest and the Minecraft version is pinned, but a first boot resolves the Paper build from `api.papermc.io`, so Minecraft gets a plain egress network beside the internal RCON one. Nothing is published on it.
+
+### Safe integration journey
+
+With the fixture up, `make test-integration` drives the real dashboard in a browser: live server state, container image digest, resolved software and version, CPU, memory, disk, the player catalog, a connected console stream, the fixed safe command `list` with its audit event, and a consistent backup that is downloaded and verified to be a real gzip archive. It then asserts the console shows the full save-off, flush, save-on cycle, so a backup that strands the world in `save-off` fails the run.
+
+The two browser lanes never mix. `BLOCKOPS_E2E_INTEGRATION=true` selects the integration Playwright project and nothing else; without it only the mocked journey runs. The integration spec removes `page.route` and `page.routeWebSocket` from the page, so a handler added by mistake throws instead of quietly replacing real behavior with a fixture.
+
+Stopping, restarting, restoring, and world replacement are deliberately absent. They land in the separate destructive profile.
 
 ## API and repository map
 

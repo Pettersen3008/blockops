@@ -126,11 +126,26 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Install Chromium
+        run: bun run playwright install --with-deps chromium
+        working-directory: frontend
       # Starts the production dashboard and guard against a real Paper server and
       # waits on all three health checks. Secrets are generated inside the runner
-      # and never printed. The safe integration journey (P1-03) runs here next.
+      # and never printed.
       - name: Start the disposable real-server fixture
         run: scripts/integration.sh up
+      # This lane is its own failure domain: a red result here means the real Docker,
+      # RCON, or archive integration broke, not the mocked browser journey.
+      - name: Run the safe integration journey
+        env:
+          BLOCKOPS_E2E_INTEGRATION: "true"
+          BLOCKOPS_E2E_URL: http://127.0.0.1:8099
+        run: bun run test:e2e
+        working-directory: frontend
       - name: Remove the fixture and its volumes
         if: always()
         run: scripts/integration.sh down

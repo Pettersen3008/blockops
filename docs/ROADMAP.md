@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 and P1-02 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
+P1-01 through P1-03 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -80,7 +80,7 @@ Depends on P1-01. One command starts an isolated stack and a real Minecraft Java
 
 The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-architecture index digest and the Minecraft version is pinned, but the Paper build itself is resolved from `api.papermc.io` on each first boot, so Minecraft needs a plain egress network beside the internal RCON one. P1-07 records the tested build.
 
-### P1-03: add the safe real-integration journey
+### P1-03: add the safe real-integration journey (complete)
 
 Depends on P1-02. A separate browser spec verifies available integrations. The existing mocked unavailable-integration journey stays untouched.
 
@@ -92,6 +92,10 @@ Depends on P1-02. A separate browser spec verifies available integrations. The e
 - Poll for software and version rather than asserting once. Paper answers RCON `version` asynchronously, so `operations.parseVersion` returns empty strings for the first seconds after the fixture reports healthy, while state, metrics, disk, and the player catalog are already correct.
 
 **Done when.** CI distinguishes frontend, backend, and real Minecraft integration failures from each other.
+
+`frontend/e2e/integration.spec.ts` runs under the `integration` Playwright project, selected only by `BLOCKOPS_E2E_INTEGRATION=true`; the default lane resolves to the `mocked` project and cannot load the integration spec. The spec removes `page.route` and `page.routeWebSocket` from the page, so an accidental handler throws.
+
+Two constraints the fixture settled. Nothing ever joins the fixture, so the real player catalog is legitimately empty and the journey asserts the parsed empty catalog rather than a player. Save consistency is observable without a second command: Paper writes `[Rcon: Automatic saving is now disabled]`, `[Rcon: Saved the game]`, and `[Rcon: Automatic saving is now enabled]` to `latest.log`, so the console proves the backup re-enabled saving.
 
 ### P1-04: add an explicit destructive profile
 
@@ -134,7 +138,7 @@ Depends on P1-03, P1-04, P1-05, P1-06.
 - Backend, frontend, mocked browser, and container checks stay separate failure domains.
 - Safe integration journey runs in protected-branch CI after cheaper checks. Destructive profile runs on manual workflow and before a tagged release.
 - Release checklist covers supported software, both platforms, restore, world replacement, security headers, image verification, and documented unsupported cases.
-- Record the tested Minecraft and server-software versions. Do not claim compatibility outside that matrix.
+- Record the tested Minecraft and server-software versions. Do not claim compatibility outside that matrix. P1-03 exercised Paper `1.21.4-232` on Minecraft 1.21.4, resolved from the pinned `itzg/minecraft-server:java21` index digest.
 
 **Done when.** A release candidate has reproducible evidence for every Phase 1 exit criterion and lists anything not verified.
 
