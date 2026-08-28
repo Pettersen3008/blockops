@@ -13,6 +13,16 @@ export function AppShell() {
   const logout = useLogoutMutation();
   const server = useServerIdentity();
 
+  function openNavigation() {
+    setMenuOpen(true);
+    window.setTimeout(() => document.getElementById("mobile-navigation-close")?.focus(), 50);
+  }
+
+  function closeNavigation() {
+    setMenuOpen(false);
+    window.setTimeout(() => document.getElementById("mobile-navigation-open")?.focus(), 50);
+  }
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location.pathname]);
@@ -24,12 +34,12 @@ export function AppShell() {
         server={server}
         open={menuOpen}
         signingOut={logout.isPending}
-        onClose={() => setMenuOpen(false)}
+        onClose={closeNavigation}
         onSignOut={() => logout.mutate()}
       />
-      {menuOpen ? <button className="fixed inset-0 z-[15] border-0 bg-[rgba(4,8,5,.48)] min-[901px]:hidden" onClick={() => setMenuOpen(false)} aria-label="Close navigation" /> : null}
-      <div className="min-h-screen ml-[240px] max-[900px]:ml-0">
-        <AppHeader server={server} onOpenNavigation={() => setMenuOpen(true)} />
+      {menuOpen ? <button className="fixed inset-0 z-[15] border-0 bg-[rgba(4,8,5,.48)] min-[901px]:hidden" onClick={closeNavigation} aria-label="Close navigation" /> : null}
+      <div className="min-h-screen ml-[240px] max-[900px]:ml-0" inert={menuOpen ? true : undefined}>
+        <AppHeader server={server} onOpenNavigation={openNavigation} />
         <main id="main-content" className="mx-auto w-full max-w-[1360px] px-[clamp(20px,3vw,40px)] pt-7 pb-14 max-[900px]:px-4 max-[900px]:pt-6 max-[900px]:pb-12">
           <Outlet context={session} />
         </main>

@@ -70,7 +70,7 @@ export function IntegrationSettings({ status }: { status: SettingsData["rcon"] }
           <Button type="submit" disabled={update.isPending}><KeyRound aria-hidden="true" />{update.isPending ? "Saving…" : "Update credentials"}</Button>
         </form>
       ) : (
-        <Notice tone="warning"><LockKeyhole aria-hidden="true" /> Credential updates are locked. Set <code>BLOCKOPS_ENCRYPTION_KEY</code> and restart; environment-provided RCON credentials continue to work.</Notice>
+        <Notice tone="warning"><LockKeyhole aria-hidden="true" /><span>Credential updates are locked. Set <code>BLOCKOPS_ENCRYPTION_KEY</code> and restart; environment-provided RCON credentials continue to work.</span></Notice>
       )}
     </Card>
   );

@@ -35,12 +35,12 @@ export function AppSidebar({
   onSignOut: () => void;
 }) {
   return (
-    <aside className={`fixed inset-y-0 left-0 z-20 flex w-[240px] flex-col border-r border-border bg-sidebar px-3 pt-4 pb-3 max-[900px]:-translate-x-[102%] max-[900px]:shadow-[var(--shadow)] max-[900px]:transition-transform max-[900px]:duration-[180ms] ${open ? "max-[900px]:translate-x-0" : ""}`}>
+    <aside onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className={`fixed inset-y-0 left-0 z-20 flex w-[240px] flex-col border-r border-border bg-sidebar px-3 pt-4 pb-3 max-[900px]:invisible max-[900px]:-translate-x-[102%] max-[900px]:shadow-[var(--shadow)] max-[900px]:transition-transform max-[900px]:duration-[180ms] ${open ? "max-[900px]:visible max-[900px]:translate-x-0" : ""}`}>
       <div className="flex min-h-[38px] items-center justify-between px-1.5">
         <AppBrand />
-        <Button variant="ghost" className="size-[38px] min-w-[38px] p-0 min-[901px]:hidden" onClick={onClose} aria-label="Close navigation">
+        {open ? <Button id="mobile-navigation-close" variant="ghost" className="size-[38px] min-w-[38px] p-0 min-[901px]:hidden" onClick={onClose} aria-label="Close navigation">
           <X aria-hidden="true" />
-        </Button>
+        </Button> : null}
       </div>
 
       <p className={sectionLabelClass}>Instances</p>

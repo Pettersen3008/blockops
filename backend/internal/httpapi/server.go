@@ -257,7 +257,10 @@ func (s *Server) consoleWebSocket(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "origin_denied", "WebSocket origin is not allowed.")
 		return
 	}
-	connection, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionDisabled})
+	connection, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		CompressionMode:    websocket.CompressionDisabled,
+		InsecureSkipVerify: true, // validWebSocketOrigin already checks the configured browser origin before a proxy changes Host.
+	})
 	if err != nil {
 		return
 	}

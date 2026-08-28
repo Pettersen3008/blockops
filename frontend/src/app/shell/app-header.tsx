@@ -17,7 +17,7 @@ export function AppHeader({
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] px-6 backdrop-blur-[16px] max-[900px]:px-4">
-      <Button variant="ghost" className="size-[38px] min-w-[38px] p-0 min-[901px]:hidden" onClick={onOpenNavigation} aria-label="Open navigation">
+      <Button id="mobile-navigation-open" variant="ghost" className="size-[38px] min-w-[38px] p-0 min-[901px]:hidden" onClick={onOpenNavigation} aria-label="Open navigation">
         <Menu aria-hidden="true" />
       </Button>
       <div className="flex min-w-0 flex-col gap-0.5">

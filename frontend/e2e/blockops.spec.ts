@@ -508,7 +508,18 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.goto("/console");
   await expect(page.getByRole("heading", { name: "Console", exact: true })).toBeVisible();
   expect(await page.getByRole("region", { name: "Console filters" }).evaluate((filters) => getComputedStyle(filters).flexDirection)).toBe("column");
-  await page.getByRole("button", { name: "Open navigation" }).click();
+  const openNavigation = page.getByRole("button", { name: "Open navigation" });
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Tab");
+  await expect(openNavigation).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#mobile-navigation-close")).toBeFocused();
+  expect(await page.locator("main").evaluate((main) => main.parentElement?.inert)).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(openNavigation).toBeFocused();
+  await openNavigation.click();
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   const overflowingElements = await page.evaluate(() => [...document.querySelectorAll("body *")]
     .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)

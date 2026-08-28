@@ -16,7 +16,10 @@ import (
 
 	"github.com/blockops-dashboard/blockops/backend/internal/auth"
 	"github.com/blockops-dashboard/blockops/backend/internal/config"
+	"github.com/blockops-dashboard/blockops/backend/internal/console"
+	"github.com/blockops-dashboard/blockops/backend/internal/operations"
 	"github.com/blockops-dashboard/blockops/backend/internal/store"
+	"github.com/coder/websocket"
 )
 
 func TestSetupSessionCSRFAndBackendAuthorization(t *testing.T) {
@@ -90,6 +93,25 @@ func TestSetupSessionCSRFAndBackendAuthorization(t *testing.T) {
 	if logoutResponse.Code != http.StatusNoContent {
 		t.Fatalf("logout status = %d, body = %s", logoutResponse.Code, logoutResponse.Body.String())
 	}
+}
+
+func TestGivenConfiguredProxyOriginWhenConnectingThenAcceptsWebSocket(t *testing.T) {
+	server := &Server{
+		config:     config.Config{PublicOrigin: "http://localhost:5173"},
+		operations: &operations.Service{Console: console.New("unused", 100)},
+	}
+	httpServer := httptest.NewServer(http.HandlerFunc(server.consoleWebSocket))
+	defer httpServer.Close()
+
+	connection, response, err := websocket.Dial(
+		context.Background(),
+		"ws"+strings.TrimPrefix(httpServer.URL, "http"),
+		&websocket.DialOptions{HTTPHeader: http.Header{"Origin": []string{"http://localhost:5173"}}},
+	)
+	if err != nil {
+		t.Fatalf("dial failed with status %d: %v", response.StatusCode, err)
+	}
+	defer connection.CloseNow()
 }
 
 func TestSourceIPWalksForwardedChainFromTrustedProxy(t *testing.T) {

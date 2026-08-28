@@ -19,12 +19,13 @@ session — read it first, trust it over memory.
 | FE-22 `backups` | done | `471da7d` | endpoint boundaries, destructive-action ownership, Tailwind migration |
 | FE-23 `overview` | done | `962639e` | endpoint/query boundaries, mutation ownership, Tailwind sections |
 | FE-24 `settings` | done | `b149cc8` | endpoint/query boundaries, mutation surfaces, Tailwind migration; no form library |
-| FE-25 `console` | done | `f8e198e` | **gate:** WebSocket invariants recorded; human review still required before merge |
-| FE-26 delete `application.css` | todo | — | |
-| FE-27 enforcement | todo | — | each rule must be proven to fail |
-| FE-28 verification + budgets | todo | — | **gate:** needs human for mobile/keyboard/visual |
-| E1 Bun workspace | done | — | uncommitted; Bun 1.4.0 is the only package manager |
-| E2 Bun build + test | done | — | Rsbuild and Vitest deleted; `bun build`/`bun:test` |
+| FE-25 `console` | done | `f8e198e` | WebSocket invariants recorded; human review passed in FE-28 |
+| FE-26 delete `application.css` | done | `57fc372` | |
+| FE-27 enforcement | done | `3d1d0c4` | each rule proven to fail |
+| FE-28 verification + budgets | done | — | automated and human gates passed; screen-reader session remains unverified |
+| E1 Bun workspace | done | `3a1f3c5` | Bun 1.4.0 is the only package manager |
+| E2 Bun build + test | done | `3a1f3c5` | Rsbuild and Vitest deleted; `bun build`/`bun:test` |
+| E3 UI package | done | `7f261ee` | shared UI boundary closed |
 
 ## Decisions
 
@@ -267,3 +268,15 @@ the start of every session and must stay cheap to load.
 - Verified: Bun 1.4.0 frozen install made no lockfile change; `bun run --cwd frontend verify` passed typecheck, lint, 138 tests with 508 assertions, dependency-cruiser across 175 modules and 341 dependencies, Knip, and the production build; `git diff --check` passed. A disposable backend copy embedded the current Bun output, `go build -trimpath -o <temp>/blockops ./cmd/blockops` passed, and `BLOCKOPS_E2E_URL=http://127.0.0.1:18080 bun run --cwd frontend test:e2e` passed 1/1 in 29.2s against that binary.
 - NOT verified: `docker build` because the local Docker socket does not exist; remote GitHub Actions; a manual screen-reader session; the development-server Playwright variant. The unit suite still prints its existing React Router future-flag and Console `act()` warnings.
 - Deleted: `packages/ui/src/avatar.tsx`, `packages/ui/src/badge.tsx`, stale shadcn configuration, duplicate raw shared-input styling, and unused package exports. No feature behavior, server state, or cache code was deleted.
+
+### FE-28 — done — 2026-08-28
+- Changed: added raw and gzip production bundle ceilings; removed the closed mobile sidebar from keyboard and accessibility navigation; moved focus into the opened sidebar; made the covered page inert; added Escape close and focus restore. The existing Settings warning markup fix keeps its icon and text aligned. The backend accepts a proxy-origin WebSocket only after `validWebSocketOrigin` passes.
+- Simplest design: CSS visibility removes closed sidebar controls from navigation. The existing `menuOpen` state owns visibility, `inert`, and focus. No new state, component, dependency, cache policy, or feature abstraction was added.
+- Budget: three identical production builds measured 1,270,380 raw bytes and 588,556 gzip bytes; the enforced 2% ceilings are 1,295,788 and 600,328 bytes. FE-15 was 968.6 KiB raw and 512.3 KiB gzip; E2 records the explained Bun/Zod and CSS-toolchain deltas
+- Profiles: three measured React Profiler runs after one warm-up; 500 player rows had median 344.0 ms mount, 1.05 ms unchanged-catalog update, and 1.43 ms one-player update. Console accepted 2,500 lines in 50 batches, kept 2,000 DOM rows, and had median 2,076.4 ms total / 91.1 ms maximum commit duration in jsdom
+- Human review: the in-app preview covered all seven routes at 1280×800 in light and dark themes and at 390×844 in light theme. Every route kept document width within the viewport. Audit retained intentional table scrolling. The browser accessibility trees had no unnamed interactive controls. Forms, landmarks, the audit table, and the Console live log had names. Dialog focus, Escape close, focus restore, and visible keyboard focus passed.
+- Console lifecycle: the live development route reached `connected`. React Strict Mode cleaned its probe socket and kept one active socket. Leaving Console closed the active socket and created no replacement after 900 ms. Re-entry repeated the probe and single-active-socket sequence. The code review confirmed runtime frame parsing, one socket and timer owner, bounded reconnect backoff, callback cleanup, pause behavior, and line limits.
+- Tests: lowering the gzip ceiling to one byte failed the build before the real ceiling was restored. The existing Playwright journey now checks the mobile drawer tab order, focus handoff, inert page, Escape close, and focus restore.
+- Verified: `bun run --cwd frontend verify` passed 138 tests with 508 assertions, zero dependency violations, Knip's existing CSS hint, and a 1,271,108-byte raw and 588,828-byte gzip production build. `BLOCKOPS_E2E_URL=http://localhost:5173 bun run --cwd frontend test:e2e` passed 1/1 in 30.9 seconds. The targeted backend WebSocket-origin test passed. The earlier disposable embedded Go production server Playwright run passed 1/1 in 28.9 seconds. `git diff --check` passed.
+- NOT verified: a real screen-reader session, the full backend test suite, remote GitHub Actions, meaningful Minecraft or RCON commands, and destructive world or server operations. React profiling used jsdom rather than browser DevTools; E5 owns reproducible browser performance tooling.
+- Deleted: the temporary profiling test and the disposable production server copy. No product code was deleted. The fix removes nine invisible mobile tab stops and prevents focus from reaching the covered page while navigation is open.
