@@ -2,8 +2,7 @@
 
 Non-negotiable rules for the BlockOps frontend. Read before editing `frontend/`.
 
-Reasoning, trade-offs, and the migration plan: [docs/FRONTEND_REFACTOR.md](docs/FRONTEND_REFACTOR.md).
-Rules here are the short version. When they disagree, this file wins.
+These rules are the frontend contract.
 
 ## The one rule
 

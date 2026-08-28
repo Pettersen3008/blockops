@@ -13,8 +13,7 @@ export function usePlayerAction() {
 
   return useMutation({
     mutationFn: runPlayerAction,
-    // Broad invalidation is recorded decision D-2c (docs/refactor-progress.md): any player
-    // action can change what every other view shows about players.
+    // Player actions can change player data shown by every server view.
     onSuccess: () => void queryClient.invalidateQueries(),
   });
 }

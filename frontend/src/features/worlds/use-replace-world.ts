@@ -6,8 +6,7 @@ export function useReplaceWorld() {
 
   return useMutation({
     mutationFn: replaceWorld,
-    // Broad invalidation is recorded decision D-2c (docs/refactor-progress.md): a
-    // replacement can change the world, server, players, backups, and audit views.
+    // Replacing a world can change every cached server view.
     onSuccess: () => void queryClient.invalidateQueries(),
   });
 }
