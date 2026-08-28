@@ -7,7 +7,7 @@ toolchain go1.25.13
 require (
 	github.com/coder/websocket v1.8.15
 	golang.org/x/crypto v0.55.0
-	modernc.org/sqlite v1.56.0
+	modernc.org/sqlite v1.57.0
 )
 
 require (
