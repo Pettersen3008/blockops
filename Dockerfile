@@ -9,7 +9,7 @@ COPY frontend/ frontend/
 COPY packages/ui/ packages/ui/
 RUN bun run --cwd frontend build
 
-FROM golang:1.25.13-alpine3.24 AS backend-build
+FROM golang:1.27.0-alpine3.24 AS backend-build
 WORKDIR /build/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
