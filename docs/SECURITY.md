@@ -19,12 +19,15 @@ Security is part of the BlockOps release boundary. This document describes imple
 - A custom Docker guard is the only socket holder. Its private HTTP routes are fixed to the configured container and required operations. The dashboard has no Docker socket mount.
 - Archive containment, link/device rejection, generated server-side filenames, staging outside the web root, size bounds, fixed world roots, and attachment-only downloads.
 - Non-root dashboard image, dropped capabilities, read-only root filesystem, private internal networks, reproducible lockfiles, race tests, `govulncheck`, npm audit, and Dependabot in CI.
+- CI renders the Compose model for both documented Minecraft data sources and asserts loopback-only ingress, unpublished guard and RCON ports, read-only roots, dropped capabilities, service-specific health checks, and a read-only socket mount on the guard alone (`scripts/compose-assert.sh`).
 
 ## Required production settings
 
 - Terminate TLS at a private ingress/reverse proxy and set `BLOCKOPS_COOKIE_SECURE=true`.
 - Set `BLOCKOPS_PUBLIC_ORIGIN` to the exact HTTPS origin.
 - Keep the dashboard on loopback/private networks. Never publish ports 2375, 25575, or `/var/run/docker.sock`.
+- Set `MINECRAFT_DATA_SOURCE` to a reviewed absolute path or an existing external volume name. It has no default, so a missing or misspelled source fails startup instead of mounting empty storage over a live world.
+- Attach the existing Minecraft container to the internal `blockops-minecraft` network for RCON. Do not reach it through a published port or the host network.
 - Generate a unique `BLOCKOPS_ENCRYPTION_KEY` and a strong, unique RCON password. Do not reuse dashboard passwords.
 - Add only direct proxy CIDRs to `BLOCKOPS_TRUSTED_PROXIES` and preserve the original host.
 - Protect `.env`, SQLite, backup, and Minecraft volumes with host permissions and encrypted storage appropriate to your threat model.

@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+# Asserts the rendered Compose model, not the source YAML: the published ingress
+# stays on loopback, the guard and RCON ports stay unpublished, both roots stay
+# read-only with all capabilities dropped, each service probes its own health
+# endpoint, and every required mount is present.
+# Usage: scripts/compose-assert.sh [extra docker compose -f arguments...]
+set -eu
+
+model=$(docker compose "$@" config --format json)
+
+check() {
+	description=$1
+	filter=$2
+	if [ "$(printf '%s' "$model" | jq -r "$filter")" != "true" ]; then
+		printf 'compose assertion failed: %s\n' "$description" >&2
+		exit 1
+	fi
+}
+
+check "dashboard publishes exactly one host port" \
+	'(.services.dashboard.ports | length) == 1'
+check "dashboard ingress is loopback-bound to container port 8080" \
+	'.services.dashboard.ports[0] | .host_ip == "127.0.0.1" and .target == 8080'
+check "no service publishes the guard or RCON port" \
+	'[.services[].ports // [] | .[] | .target, (.published | tonumber)] | all(. != 2375 and . != 25575)'
+check "the guard publishes no host port" \
+	'(.services["docker-guard"].ports // []) == []'
+
+check "both roots are read-only" \
+	'[.services[].read_only] | length == 2 and all(. == true)'
+check "both services drop all capabilities" \
+	'[.services[].cap_drop] | length == 2 and all(index("ALL") != null)'
+check "both services forbid privilege escalation" \
+	'[.services[].security_opt] | all(index("no-new-privileges:true") != null)'
+
+check "the guard probes its own listener, not the dashboard health route" \
+	'.services["docker-guard"].healthcheck.test | join(" ") | contains("http://127.0.0.1:2375/health")'
+check "the dashboard inherits the image health check" \
+	'.services.dashboard | has("healthcheck") | not'
+check "the dashboard waits for a healthy guard" \
+	'.services.dashboard.depends_on["docker-guard"].condition == "service_healthy"'
+
+check "the dashboard mounts data, backups, and Minecraft data" \
+	'[.services.dashboard.volumes[].target] | contains(["/data", "/backups", "/minecraft"])'
+check "only the guard mounts the Docker socket, read-only" \
+	'[.services[].volumes[] | select(.target == "/var/run/docker.sock")] | length == 1 and .[0].read_only == true'
+check "the dashboard never mounts the Docker socket" \
+	'[.services.dashboard.volumes[].source] | all(. != "/var/run/docker.sock")'
+
+check "the control networks stay internal" \
+	'[.networks["app-control"].internal, .networks["minecraft-control"].internal] | all(. == true)'
+check "the guard stays off the ingress network" \
+	'.services["docker-guard"].networks | has("ingress") | not'
+
+printf 'compose assertions passed: docker compose %s\n' "$*"

@@ -1,0 +1,14 @@
+# Second documented source: an existing named Minecraft data volume.
+# Set MINECRAFT_DATA_SOURCE to its exact volume name and start with
+#   docker compose -f compose.yaml -f compose.minecraft-volume.yaml up -d
+# or set COMPOSE_FILE in .env so every later command uses both files.
+# The volume must already exist; Compose will not create it.
+services:
+  dashboard:
+    volumes:
+      - minecraft-data:/minecraft
+
+volumes:
+  minecraft-data:
+    name: ${MINECRAFT_DATA_SOURCE:?Set the existing Minecraft data volume name}
+    external: true

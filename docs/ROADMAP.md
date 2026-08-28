@@ -53,9 +53,9 @@ flowchart LR
   P106 --> P107
 ```
 
-All tickets are `planned`. P1-05 runs alongside the integration work.
+P1-01 is `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
 
-### P1-01: make the Compose contract accurate
+### P1-01: make the Compose contract accurate (complete)
 
 A normal `docker compose up` publishes only the dashboard and reports honest health for both services on Linux and Docker Desktop.
 

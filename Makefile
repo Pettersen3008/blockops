@@ -27,3 +27,4 @@ build:
 
 compose-config:
 	docker compose config --quiet
+	scripts/compose-assert.sh

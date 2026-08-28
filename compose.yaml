@@ -7,7 +7,8 @@ services:
     image: blockops:local
     restart: unless-stopped
     depends_on:
-      - docker-guard
+      docker-guard:
+        condition: service_healthy
     environment:
       BLOCKOPS_LISTEN_ADDRESS: ":8080"
       BLOCKOPS_DATABASE_PATH: /data/blockops.db
@@ -29,7 +30,9 @@ services:
     volumes:
       - blockops-data:/data
       - blockops-backups:/backups
-      - ${MINECRAFT_DATA_SOURCE:-minecraft-data}:/minecraft
+      # Absolute host path of the existing server's data. For a pre-existing named
+      # volume, add compose.minecraft-volume.yaml, which replaces this mount.
+      - ${MINECRAFT_DATA_SOURCE:?Set the absolute Minecraft data path, or set it to the existing volume name and add -f compose.minecraft-volume.yaml}:/minecraft
     networks:
       - ingress
       - app-control
@@ -56,6 +59,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - app-control
+    # The image healthcheck probes the dashboard's :8080/api/v1/health, which this
+    # entrypoint never serves. Probe the guard's own listener instead.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2375/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     read_only: true
     tmpfs:
       - /run:size=8m
@@ -68,6 +79,9 @@ networks:
   ingress:
   app-control:
     internal: true
+  # The existing Minecraft container must join this network for
+  # BLOCKOPS_RCON_ADDRESS to resolve:
+  #   docker network connect blockops-minecraft YOUR_MINECRAFT_CONTAINER
   minecraft-control:
     name: blockops-minecraft
     internal: true
@@ -75,5 +89,3 @@ networks:
 volumes:
   blockops-data:
   blockops-backups:
-  minecraft-data:
-    name: minecraft-data

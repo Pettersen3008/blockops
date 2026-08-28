@@ -53,15 +53,39 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
    openssl rand -base64 32
    ```
 
-   Put the generated value in `BLOCKOPS_ENCRYPTION_KEY`. Set `BLOCKOPS_MINECRAFT_CONTAINER` to the exact Docker container name, `BLOCKOPS_RCON_PASSWORD` to the server's existing RCON password, and `MINECRAFT_DATA_SOURCE` to its named volume or absolute bind path. No production credentials are included in the repository.
+   Put the generated value in `BLOCKOPS_ENCRYPTION_KEY`. Set `BLOCKOPS_MINECRAFT_CONTAINER` to the exact Docker container name and `BLOCKOPS_RCON_PASSWORD` to the server's existing RCON password. No production credentials are included in the repository.
 
-2. Build and start BlockOps:
+2. Choose one of the two supported Minecraft data sources. `MINECRAFT_DATA_SOURCE` has no default, so BlockOps refuses to start rather than mounting an empty directory over your world.
+
+   For an absolute host path, set `MINECRAFT_DATA_SOURCE=/srv/minecraft` and start with:
 
    ```sh
    docker compose up -d --build
    ```
 
-3. Join the existing Minecraft container to the private RCON network:
+   For an existing named volume, set `MINECRAFT_DATA_SOURCE` to its exact volume name, add `COMPOSE_FILE=compose.yaml:compose.minecraft-volume.yaml` to `.env`, and start with:
+
+   ```sh
+   docker compose -f compose.yaml -f compose.minecraft-volume.yaml up -d --build
+   ```
+
+   The override file declares that volume `external`, so a name that does not exist fails loudly instead of creating an empty one. With `COMPOSE_FILE` set, later `docker compose ps`, `logs`, and `down` commands need no `-f` flags. Docker Desktop and Linux use the same two commands.
+
+3. Join the existing Minecraft container to the private RCON network. BlockOps cannot reach a container it does not share a network with, on either platform. The first `docker compose up` creates the internal network `blockops-minecraft`; it publishes nothing and adds no host exposure.
+
+   If your Minecraft server has its own Compose file, declare the network there so the attachment survives every recreation:
+
+   ```yaml
+   services:
+     minecraft:
+       networks: [default, blockops-minecraft]
+
+   networks:
+     blockops-minecraft:
+       external: true
+   ```
+
+   Then `docker compose up -d` that stack. For a container not managed by Compose, attach it directly and re-run this after any recreation:
 
    ```sh
    docker network connect blockops-minecraft YOUR_MINECRAFT_CONTAINER
@@ -69,9 +93,17 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
 
    If its name is not `minecraft`, set `BLOCKOPS_RCON_ADDRESS=YOUR_MINECRAFT_CONTAINER:25575`. Do not add a host port mapping for 25575.
 
-4. Open the configured HTTPS origin through your reverse proxy or, for a loopback development check, set `BLOCKOPS_COOKIE_SECURE=false` and visit `http://127.0.0.1:8080`. Create the first administrator. Re-enable secure cookies before an HTTPS deployment.
+4. Confirm both services are healthy and only the dashboard is published:
 
-5. Confirm Overview reports the container and RCON separately. If either is unavailable, verify the exact container name, shared network, RCON password, and mounted data source. BlockOps fails closed for consistency-sensitive operations.
+   ```sh
+   docker compose ps
+   ```
+
+   `dashboard` and `docker-guard` both report `healthy`, and the only host port is `127.0.0.1:8080->8080/tcp`. The guard has its own health check against `http://127.0.0.1:2375/health`; the dashboard waits for it before starting.
+
+5. Open the configured HTTPS origin through your reverse proxy or, for a loopback development check, set `BLOCKOPS_COOKIE_SECURE=false` and visit `http://127.0.0.1:8080`. Create the first administrator. Re-enable secure cookies before an HTTPS deployment.
+
+6. Confirm Overview reports the container and RCON separately. If either is unavailable, verify the exact container name, shared network, RCON password, and mounted data source. BlockOps fails closed for consistency-sensitive operations.
 
 ### Reverse proxy notes
 
@@ -105,6 +137,8 @@ Run deterministic checks with:
 make test
 make build
 ```
+
+Deployment changes run `make compose-config`, which renders the Compose model and asserts loopback-only ingress, unpublished 2375 and 25575, read-only roots, dropped capabilities, per-service health checks, and the required mounts. CI runs the same assertions for both documented data sources.
 
 With the development servers running, execute the real-browser smoke journey with `make test-e2e`. Set `BLOCKOPS_E2E_CHROME_PATH` when using an already-installed Chromium/Chrome binary; CI installs Chromium and tests the assembled production server.
 

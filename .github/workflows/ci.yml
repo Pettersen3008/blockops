@@ -98,12 +98,24 @@ jobs:
     needs: [backend, frontend, browser]
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Compose
+      - name: Validate Compose for an absolute bind path
         env:
           BLOCKOPS_MINECRAFT_CONTAINER: minecraft
           BLOCKOPS_RCON_PASSWORD: ci-not-a-production-secret
           BLOCKOPS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
-        run: docker compose config --quiet
+          MINECRAFT_DATA_SOURCE: /srv/minecraft
+        run: |
+          docker compose config --quiet
+          scripts/compose-assert.sh
+      - name: Validate Compose for an existing named volume
+        env:
+          BLOCKOPS_MINECRAFT_CONTAINER: minecraft
+          BLOCKOPS_RCON_PASSWORD: ci-not-a-production-secret
+          BLOCKOPS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          MINECRAFT_DATA_SOURCE: minecraft-data
+        run: |
+          docker compose -f compose.yaml -f compose.minecraft-volume.yaml config --quiet
+          scripts/compose-assert.sh -f compose.yaml -f compose.minecraft-volume.yaml
       - run: docker build --tag blockops:ci .
       - name: Confirm non-root runtime user
         run: test "$(docker image inspect blockops:ci --format '{{.Config.User}}')" = "10001:10001"
