@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, CirclePause, CirclePlay, Search } from "lucide-react";
-import { Button } from "@blockops/ui";
+import { Button, Input } from "@blockops/ui";
 import { mergeConsoleLines } from "../console-lines";
 import type { ConsoleLine } from "../console-schema";
 
@@ -34,7 +34,7 @@ export function ConsoleOutput({ history, live }: { history: ConsoleLine[]; live:
         <label className="relative flex min-w-[220px] flex-1 items-center max-[660px]:w-full max-[660px]:min-w-0">
           <Search className="absolute left-3 w-[17px] text-muted-foreground" aria-hidden="true" />
           <span className="sr-only">Search console</span>
-          <input className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card pr-3 pl-[38px] text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_72%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none" type="search" placeholder="Search console output" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <Input className="bg-card pr-3 pl-[38px]" type="search" placeholder="Search console output" value={search} onChange={(event) => setSearch(event.target.value)} />
         </label>
         <div className="inline-flex min-h-[42px] rounded-[10px] border border-[var(--line-strong)] bg-[var(--surface)] p-[3px] max-[660px]:overflow-x-auto" aria-label="Log level filter">
           {(["all", "warning", "error"] as const).map((value) => (

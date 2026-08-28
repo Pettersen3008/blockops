@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Button, Field, Notice } from "@blockops/ui";
+import { Button, Field, Input, Notice } from "@blockops/ui";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { loginCredentialsSchema, setupCredentialsSchema } from "./auth-schemas";
 import type { AuthCredentials } from "./auth-schemas";
@@ -57,7 +57,7 @@ export function AuthForm({
         hintId="username-hint"
         hintIsError={Boolean(fieldErrors.username)}
       >
-        <input className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card px-3 text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_72%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none"
+        <Input className="bg-card px-3"
           id="username"
           name="username"
           autoComplete="username"
@@ -77,7 +77,7 @@ export function AuthForm({
         hintId="password-hint"
         hintIsError={Boolean(fieldErrors.password)}
       >
-        <input className="min-h-11 w-full rounded-[var(--radius-sm)] border border-input bg-card px-3 text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_72%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-hover)_50%,var(--line))] focus:border-primary-hover focus:ring-3 focus:ring-[color-mix(in_srgb,var(--primary-hover)_15%,transparent)] focus:outline-none"
+        <Input className="bg-card px-3"
           id="password"
           name="password"
           type="password"

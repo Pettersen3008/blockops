@@ -26,10 +26,17 @@ export default {
       from: {},
       to: { couldNotResolve: true },
     },
+    {
+      name: "ui-does-not-depend-on-frontend",
+      severity: "error",
+      comment: "The reusable UI package must not import application code.",
+      from: { path: "^../packages/ui/src" },
+      to: { path: "^src" },
+    },
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    includeOnly: "^src",
+    includeOnly: "^(src|../packages/ui/src)",
     tsConfig: { fileName: "tsconfig.app.json" },
     enhancedResolveOptions: {
       exportsFields: ["exports"],

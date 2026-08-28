@@ -7,7 +7,7 @@
     "dev": "bun --hot dev.ts",
     "build": "tsc -b && bun build.ts",
     "lint": "eslint . --max-warnings=0",
-    "boundaries": "depcruise src --config dependency-cruiser.config.js",
+    "boundaries": "depcruise src ../packages/ui/src --config dependency-cruiser.config.js",
     "knip": "knip",
     "test:e2e": "playwright test",
     "typecheck": "tsc -b --pretty false",

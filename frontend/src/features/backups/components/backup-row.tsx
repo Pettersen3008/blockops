@@ -1,5 +1,5 @@
 import { Archive, Download, RotateCcw, Trash2 } from "lucide-react";
-import { Button, Card, StatusPill } from "@blockops/ui";
+import { Button, ButtonLink, Card, StatusPill } from "@blockops/ui";
 import { formatBytes, formatDate } from "@/formatters";
 import { backupDownloadUrl } from "../api/backup-download-url";
 import type { Backup } from "../backup-schema";
@@ -35,9 +35,9 @@ export function BackupRow({
         </div>
         <div className="flex flex-wrap justify-end gap-[7px] max-[1180px]:col-start-2 max-[1180px]:justify-start max-[660px]:col-[1/-1] max-[660px]:[&_[data-slot=button]]:flex-1">
           {canDownload ? (
-            <Button variant="secondary" render={<a href={backupDownloadUrl(backup.id)} />}>
+            <ButtonLink variant="secondary" href={backupDownloadUrl(backup.id)}>
               <Download aria-hidden="true" />Download
-            </Button>
+            </ButtonLink>
           ) : null}
           {canRestore ? <Button variant="secondary" onClick={onRestore}><RotateCcw aria-hidden="true" />Restore</Button> : null}
           {canDelete ? <Button variant="destructive" onClick={onDelete}><Trash2 aria-hidden="true" />Delete</Button> : null}

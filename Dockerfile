@@ -3,8 +3,10 @@ FROM oven/bun:1.4.0-alpine AS frontend-build
 WORKDIR /build
 COPY package.json bun.lock bunfig.toml ./
 COPY frontend/package.json frontend/package.json
+COPY packages/ui/package.json packages/ui/package.json
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY frontend/ frontend/
+COPY packages/ui/ packages/ui/
 RUN bun run --cwd frontend build
 
 FROM golang:1.25.13-alpine3.24 AS backend-build

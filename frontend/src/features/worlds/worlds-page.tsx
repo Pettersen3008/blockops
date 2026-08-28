@@ -2,7 +2,7 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { Download, FileArchive, ShieldAlert, Upload, X } from "lucide-react";
 import { hasPermission } from "@/features/auth";
 import type { Session } from "@/features/auth";
-import { Button, Card, ConfirmDialog, Notice, PageHeader } from "@blockops/ui";
+import { Button, ButtonLink, Card, ConfirmDialog, Notice, PageHeader } from "@blockops/ui";
 import { formatBytes } from "@/formatters";
 import { safeErrorMessage } from "@/lib/api/api-error";
 import { WORLD_DOWNLOAD_URL } from "./api/download-world";
@@ -65,7 +65,7 @@ export function WorldsPage({ session }: { session: Session }) {
           <p className="mb-[7px] text-[0.72rem] font-medium tracking-[0.13em] text-primary uppercase">Consistent export</p>
           <h2 className="mb-2.5 text-[1.35rem]">Download current world</h2>
           <p className="max-w-[650px] text-muted-foreground">BlockOps disables saves, flushes the world, archives the primary and dimension directories, then re-enables saves. A stopped server is archived directly.</p>
-          <Button variant="secondary" render={<a href={WORLD_DOWNLOAD_URL} />}><Download aria-hidden="true" /> Prepare download</Button>
+          <ButtonLink variant="secondary" href={WORLD_DOWNLOAD_URL}><Download aria-hidden="true" /> Prepare download</ButtonLink>
         </Card>
         <Card className="relative overflow-hidden p-[26px] max-[660px]:p-5">
           <div className="mb-12 grid size-[72px] rotate-3 place-items-center rounded-[20px] bg-warning-muted text-warning max-[660px]:mb-[30px] [&_svg]:w-[31px]"><Upload aria-hidden="true" /></div>

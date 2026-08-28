@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Link, useRouteError } from "react-router-dom";
-import { Button } from "@blockops/ui";
+import { ButtonLink } from "@blockops/ui";
 
 export function RouteErrorPage() {
   useRouteError();
@@ -9,7 +9,7 @@ export function RouteErrorPage() {
       <AlertTriangle className="size-[30px] text-destructive" aria-hidden="true" />
       <h1>This page couldn’t be loaded</h1>
       <p>The route failed before BlockOps could display it.</p>
-      <Button render={<Link to="/overview" />}>Return to overview</Button>
+      <ButtonLink render={<Link to="/overview" />}>Return to overview</ButtonLink>
     </main>
   );
 }

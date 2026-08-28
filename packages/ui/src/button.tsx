@@ -1,4 +1,5 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "./cn";
@@ -49,4 +50,22 @@ export function Button({
       {...props}
     />
   );
+}
+
+export function ButtonLink({
+  className,
+  variant = "default",
+  size = "default",
+  render,
+  ...props
+}: useRender.ComponentProps<"a"> & VariantProps<typeof buttonVariants>) {
+  return useRender({
+    defaultTagName: "a",
+    render,
+    props: {
+      ...props,
+      className: cn(buttonVariants({ variant, size, className })),
+      "data-slot": "button",
+    },
+  });
 }
