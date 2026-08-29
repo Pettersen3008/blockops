@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -101,8 +102,11 @@ func TestOpenGivenLegacyExactSecondAuditTimeWhenMigratingThenNormalizesOrdering(
 	t.Parallel()
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "blockops.db")
-	database, err := Open(ctx, path)
+	legacy, err := sql.Open("sqlite", path)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(ctx, schemaVersion1); err != nil {
 		t.Fatal(err)
 	}
 	for _, row := range []struct {
@@ -112,14 +116,14 @@ func TestOpenGivenLegacyExactSecondAuditTimeWhenMigratingThenNormalizesOrdering(
 		{id: "00000000000000000000000000000001", occurred: "2026-08-29T12:00:00Z"},
 		{id: "00000000000000000000000000000002", occurred: "2026-08-29T12:00:00.000000001Z"},
 	} {
-		if _, err := database.db.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,action,target,source_ip,outcome) VALUES(?,?,?,?,?,?)`, row.id, row.occurred, "test", "server", "127.0.0.1", "success"); err != nil {
+		if _, err := legacy.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,action,target,source_ip,outcome) VALUES(?,?,?,?,?,?)`, row.id, row.occurred, "test", "server", "127.0.0.1", "success"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := database.Close(); err != nil {
+	if err := legacy.Close(); err != nil {
 		t.Fatal(err)
 	}
-	database, err = Open(ctx, path)
+	database, err := Open(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}

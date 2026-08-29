@@ -114,61 +114,6 @@ func Open(ctx context.Context, path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
-func (s *Store) migrate(ctx context.Context) error {
-	const schema = `
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('administrator','operator','viewer')),
-  disabled INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS sessions (
-  id_hash BLOB PRIMARY KEY,
-  csrf_token TEXT NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  revoked_at TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
-CREATE TABLE IF NOT EXISTS audit_events (
-  id TEXT PRIMARY KEY,
-  occurred_at TEXT NOT NULL,
-  user_id TEXT,
-  username TEXT NOT NULL DEFAULT '',
-  action TEXT NOT NULL,
-  target TEXT NOT NULL,
-  source_ip TEXT NOT NULL,
-  outcome TEXT NOT NULL CHECK (outcome IN ('success','failure','denied')),
-  details_json TEXT NOT NULL DEFAULT '{}'
-);
-UPDATE audit_events
-SET occurred_at = substr(occurred_at, 1, 19) || '.000000000Z'
-WHERE length(occurred_at) = 20 AND substr(occurred_at, 20, 1) = 'Z';
-DROP INDEX IF EXISTS idx_audit_occurred;
-CREATE INDEX IF NOT EXISTS idx_audit_order ON audit_events(occurred_at DESC, id DESC);
-CREATE TABLE IF NOT EXISTS backups (
-  id TEXT PRIMARY KEY,
-  filename TEXT NOT NULL UNIQUE,
-  size_bytes INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  created_by TEXT NOT NULL,
-  status TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS app_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);`
-	if _, err := s.db.ExecContext(ctx, schema); err != nil {
-		return fmt.Errorf("apply database schema: %w", err)
-	}
-	return nil
-}
-
 func NewID() (string, error) {
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
