@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 through P1-05 are `complete`. Every other ticket is `planned`.
+P1-01 through P1-06 are `complete`. P1-07 is `planned`.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -125,7 +125,7 @@ Administrators traverse and export a growing history without a fixed newest-200 
 
 The API now applies outcome and literal search filters before `(occurred_at DESC, id DESC)` cursor traversal. Existing exact-second timestamps migrate to the fixed-width UTC form used by new events, so SQLite text order stays chronological. The dashboard keeps filters in the URL, keeps cursors in `useInfiniteQuery`, and loads each next page only when an administrator selects **Load more**. CSV export reuses the filtered page query, stops at `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`, reads stored redacted details, and prefixes spreadsheet formula cells. Store, boundary, CSV, config, frontend, and production-binary browser checks cover the flow.
 
-### P1-06: publish a verifiable release image
+### P1-06: publish a verifiable release image (complete)
 
 Depends on P1-01. A tag produces one immutable multi-architecture image plus verifiable evidence.
 
@@ -134,6 +134,8 @@ Depends on P1-01. A tag produces one immutable multi-architecture image plus ver
 - Minimal workflow permissions. Pin third-party actions to commit SHAs before granting write or identity permissions.
 
 **Done when.** The README documents a digest-pinned deployment and a copyable verification flow, the runtime user is still `10001:10001`, and pull requests cannot publish or sign.
+
+The tag-only release workflow accepts stable `vMAJOR.MINOR.PATCH` tags, publishes one `linux/amd64` and `linux/arm64` image index to GHCR, and addresses it by the exact version or digest. BuildKit attaches a per-platform SPDX SBOM and SLSA provenance. Cosign signs the image digest through GitHub Actions OIDC. The GitHub release records that digest, exports both attestations for each platform, checksums every evidence file, and includes copyable verification commands. Every action has an immutable commit SHA, and only the tag job receives package, release, and identity write permissions.
 
 ### P1-07: make Phase 1 a release gate
 

@@ -40,6 +40,7 @@ build:
 compose-config:
 	docker compose config --quiet
 	scripts/compose-assert.sh
+	scripts/release-assert.sh
 
 integration-up:
 	scripts/integration.sh up

@@ -98,6 +98,8 @@ jobs:
     needs: [backend, frontend, browser]
     steps:
       - uses: actions/checkout@v4
+      - name: Validate release policy
+        run: scripts/release-assert.sh
       - name: Validate Compose for an absolute bind path
         env:
           BLOCKOPS_MINECRAFT_CONTAINER: minecraft

@@ -34,7 +34,7 @@ Security is part of the BlockOps release boundary. This document describes imple
 - Add only direct proxy CIDRs to `BLOCKOPS_TRUSTED_PROXIES` and preserve the original host.
 - Protect `.env`, SQLite, backup, and Minecraft volumes with host permissions and encrypted storage appropriate to your threat model.
 - Back up the BlockOps SQLite volume separately if dashboard identity/audit history matters. World backups alone do not contain it.
-- Pin released container digests in higher-assurance environments and review Dependabot/security advisories before upgrades.
+- Verify the release's keyless signature and checksums, then set `BLOCKOPS_IMAGE` to its exact digest. Review Dependabot and security advisories before upgrades.
 - Test restore on a non-production copy. Monitor free space for archive staging plus rollback.
 
 ## Residual risks

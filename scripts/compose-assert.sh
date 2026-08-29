@@ -2,8 +2,9 @@
 # Asserts the rendered Compose model, not the source YAML: the published ingress
 # stays on loopback, the guard and RCON ports stay unpublished, both BlockOps
 # roots stay read-only with all capabilities dropped, each service probes its own
-# health endpoint, and every required mount is present. The rendered model never
-# reaches stdout, so it is safe to run against the integration fixture's secrets.
+# health endpoint, both processes use the same image, and every required mount is
+# present. The rendered model never reaches stdout, so it is safe to run against
+# the integration fixture's secrets.
 # Usage: scripts/compose-assert.sh [extra docker compose arguments...]
 set -eu
 
@@ -42,6 +43,8 @@ check "the dashboard inherits the image health check" \
 	'.services.dashboard | has("healthcheck") | not'
 check "the dashboard waits for a healthy guard" \
 	'.services.dashboard.depends_on["docker-guard"].condition == "service_healthy"'
+check "both BlockOps services use the same image" \
+	'.services.dashboard.image == .services["docker-guard"].image'
 
 check "the dashboard mounts data, backups, and Minecraft data" \
 	'[.services.dashboard.volumes[].target] | contains(["/data", "/backups", "/minecraft"])'

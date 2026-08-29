@@ -44,6 +44,32 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
 - RCON enabled in the server's `server.properties` with a strong password. The RCON port must be reachable only on the private Docker network.
 - The Minecraft data source must be readable and writable by UID/GID 10001 for world replacement. Align volume ownership or host ACLs before enabling uploads/restores.
 
+### Verify and select a tagged image
+
+Each [GitHub release](https://github.com/Pettersen3008/blockops/releases) lists one multi-architecture image by digest. Install [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and the [GitHub CLI](https://cli.github.com/), then replace the example version and digest with the release values:
+
+```sh
+VERSION=v1.2.3
+IMAGE=ghcr.io/pettersen3008/blockops@sha256:REPLACE_WITH_RELEASE_DIGEST
+
+cosign verify \
+  --certificate-identity "https://github.com/Pettersen3008/blockops/.github/workflows/release.yml@refs/tags/$VERSION" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "$IMAGE"
+```
+
+Download the release evidence and verify its checksums on Linux:
+
+```sh
+gh release download "$VERSION" --repo Pettersen3008/blockops --dir "blockops-$VERSION"
+(cd "blockops-$VERSION" && sha256sum --check SHA256SUMS)
+test "$(cat "blockops-$VERSION"/*-image.txt)" = "$IMAGE"
+```
+
+On macOS, replace the `sha256sum` command with `shasum -a 256 --check SHA256SUMS`. The downloaded files contain the image index plus SPDX and SLSA provenance JSON for both `linux/amd64` and `linux/arm64`.
+
+After both checks pass, copy the full `IMAGE` value into `.env` as `BLOCKOPS_IMAGE=ghcr.io/pettersen3008/blockops@sha256:...`. The digest keeps later deployments on the verified image even if a registry tag changes.
+
 ### Install beside an existing server
 
 1. Copy the environment template and fill every required field:
@@ -53,23 +79,27 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
    openssl rand -base64 32
    ```
 
-   Put the generated value in `BLOCKOPS_ENCRYPTION_KEY`. Set `BLOCKOPS_MINECRAFT_CONTAINER` to the exact Docker container name and `BLOCKOPS_RCON_PASSWORD` to the server's existing RCON password. No production credentials are included in the repository.
+   Put the generated value in `BLOCKOPS_ENCRYPTION_KEY`. Set `BLOCKOPS_MINECRAFT_CONTAINER` to the exact Docker container name and `BLOCKOPS_RCON_PASSWORD` to the server's existing RCON password. For a tagged release, set `BLOCKOPS_IMAGE` to the verified digest reference from the previous section. Keep `blockops:local` only when building this checkout. No production credentials are included in the repository.
 
 2. Choose one of the two supported Minecraft data sources. `MINECRAFT_DATA_SOURCE` has no default, so BlockOps refuses to start rather than mounting an empty directory over your world.
 
-   For an absolute host path, set `MINECRAFT_DATA_SOURCE=/srv/minecraft` and start with:
+   For an absolute host path, set `MINECRAFT_DATA_SOURCE=/srv/minecraft`. Start a tagged release with:
 
    ```sh
-   docker compose up -d --build
+   docker compose pull
+   docker compose up -d --no-build
    ```
 
-   For an existing named volume, set `MINECRAFT_DATA_SOURCE` to its exact volume name, add `COMPOSE_FILE=compose.yaml:compose.minecraft-volume.yaml` to `.env`, and start with:
+   For an existing named volume, set `MINECRAFT_DATA_SOURCE` to its exact volume name, add `COMPOSE_FILE=compose.yaml:compose.minecraft-volume.yaml` to `.env`, and start a tagged release with:
 
    ```sh
-   docker compose -f compose.yaml -f compose.minecraft-volume.yaml up -d --build
+   docker compose -f compose.yaml -f compose.minecraft-volume.yaml pull
+   docker compose -f compose.yaml -f compose.minecraft-volume.yaml up -d --no-build
    ```
 
    The override file declares that volume `external`, so a name that does not exist fails loudly instead of creating an empty one. With `COMPOSE_FILE` set, later `docker compose ps`, `logs`, and `down` commands need no `-f` flags. Docker Desktop and Linux use the same two commands.
+
+   To build this checkout instead, keep `BLOCKOPS_IMAGE=blockops:local` and replace the `pull` and `up` commands with `docker compose up -d --build`.
 
 3. Join the existing Minecraft container to the private RCON network. BlockOps cannot reach a container it does not share a network with, on either platform. The first `docker compose up` creates the internal network `blockops-minecraft`; it publishes nothing and adds no host exposure.
 

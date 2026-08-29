@@ -4,7 +4,7 @@ services:
   dashboard:
     build:
       context: .
-    image: blockops:local
+    image: ${BLOCKOPS_IMAGE:-blockops:local}
     restart: unless-stopped
     depends_on:
       docker-guard:
@@ -49,7 +49,7 @@ services:
   docker-guard:
     build:
       context: .
-    image: blockops:local
+    image: ${BLOCKOPS_IMAGE:-blockops:local}
     entrypoint: ["/usr/local/bin/blockops-docker-guard"]
     user: "0:0"
     restart: unless-stopped
