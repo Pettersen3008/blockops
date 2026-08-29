@@ -29,6 +29,16 @@ Do not claim compatibility with other Minecraft versions or server software. Van
 11. Run the release's Cosign, checksum, image-reference, and digest-pinned deployment commands from [README.md](../README.md#verify-and-select-a-tagged-image).
 12. Put every failed, skipped, or manual check in the release notes. Do not replace missing evidence with a compatibility claim.
 
+## Upgrade an installation
+
+The control plane applies ordered schema migrations at startup and records each one in `schema_migrations`. A migration runs in a single transaction, so a failure leaves the previous schema usable.
+
+1. Stop the dashboard.
+2. Copy the database file named by `BLOCKOPS_DATABASE_PATH`, including its `-wal` and `-shm` siblings.
+3. Start the new image.
+
+There is no backwards migration. A binary refuses to open a database written by a newer build and stops with a schema-version error, so a downgrade after a successful migration needs that copy restored.
+
 ## Not verified by the automated gate
 
 - The real-server journeys do not run on ARM64.

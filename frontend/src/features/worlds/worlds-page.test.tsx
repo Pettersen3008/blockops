@@ -18,6 +18,7 @@ const session: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 const unrelatedQueryKey = ["unrelated-feature", "detail"] as const;
@@ -62,7 +63,7 @@ describe("WorldsPage", () => {
     const user = userEvent.setup();
     let upload: { contentType: string | null; csrf: string | null } | undefined;
     server.use(
-      http.put("/api/v1/world", async ({ request }) => {
+      http.put("/api/v1/servers/test-server/world", async ({ request }) => {
         upload = {
           contentType: request.headers.get("Content-Type"),
           csrf: request.headers.get("X-CSRF-Token"),
@@ -91,7 +92,7 @@ describe("WorldsPage", () => {
 
   it("keeps the selected ZIP and confirmation open when the response is malformed", async () => {
     const user = userEvent.setup();
-    server.use(http.put("/api/v1/world", () => HttpResponse.json({ status: "unexpected" })));
+    server.use(http.put("/api/v1/servers/test-server/world", () => HttpResponse.json({ status: "unexpected" })));
     renderWorlds();
 
     await user.upload(

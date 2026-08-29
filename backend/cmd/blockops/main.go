@@ -42,7 +42,14 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 			return err
 		}
 	}
-	database, err := store.Open(ctx, cfg.DatabasePath)
+	database, err := store.Open(ctx, cfg.DatabasePath, store.Adoption{
+		DockerBaseURL: cfg.DockerBaseURL,
+		ContainerName: cfg.MinecraftContainer,
+		DataDir:       cfg.MinecraftDataDir,
+		BackupDir:     cfg.BackupDir,
+		WorldName:     cfg.WorldName,
+		RCONAddress:   cfg.RCONAddress,
+	})
 	if err != nil {
 		return err
 	}

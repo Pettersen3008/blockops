@@ -163,36 +163,3 @@ func randomToken(length int) (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(buffer), nil
 }
-
-func Allows(role Role, permission string) bool {
-	if role == Administrator {
-		return true
-	}
-	operator := map[string]bool{
-		"monitor.read":     true,
-		"console.read":     true,
-		"console.execute":  true,
-		"players.read":     true,
-		"players.manage":   true,
-		"backups.read":     true,
-		"backups.create":   true,
-		"backups.delete":   true,
-		"backups.download": true,
-		"world.download":   true,
-		"server.restart":   true,
-	}
-	viewer := map[string]bool{
-		"monitor.read": true,
-		"console.read": true,
-		"players.read": true,
-		"backups.read": true,
-	}
-	switch role {
-	case Operator:
-		return operator[permission]
-	case Viewer:
-		return viewer[permission]
-	default:
-		return false
-	}
-}

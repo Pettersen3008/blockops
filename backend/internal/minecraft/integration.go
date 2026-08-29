@@ -13,8 +13,6 @@ import (
 	"github.com/blockops-dashboard/blockops/backend/internal/store"
 )
 
-const integrationSetting = "integration.rcon.v1"
-
 type Credentials struct {
 	Address  string `json:"address"`
 	Password string `json:"password"`
@@ -40,14 +38,14 @@ func NewIntegration(ctx context.Context, database *store.Store, cipher *secrets.
 	if cipher == nil {
 		return integration, nil
 	}
-	encoded, err := database.Setting(ctx, integrationSetting)
+	encoded, err := database.ServerSecret(ctx, store.RCONSecretName)
 	if errors.Is(err, store.ErrNotFound) {
 		return integration, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	plaintext, err := cipher.Decrypt(encoded, integrationSetting)
+	plaintext, err := cipher.Decrypt(encoded, store.RCONSecretName)
 	if err != nil {
 		return nil, fmt.Errorf("load RCON credentials: %w", err)
 	}
@@ -91,11 +89,11 @@ func (i *Integration) Update(ctx context.Context, credentials Credentials) error
 	if err != nil {
 		return fmt.Errorf("encode RCON credentials: %w", err)
 	}
-	encoded, err := i.cipher.Encrypt(encodedJSON, integrationSetting)
+	encoded, err := i.cipher.Encrypt(encodedJSON, store.RCONSecretName)
 	if err != nil {
 		return err
 	}
-	if err := i.store.SetSetting(ctx, integrationSetting, encoded); err != nil {
+	if err := i.store.SetServerSecret(ctx, store.RCONSecretName, encoded); err != nil {
 		return err
 	}
 	i.mu.Lock()

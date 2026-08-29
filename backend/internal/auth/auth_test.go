@@ -37,25 +37,3 @@ func TestPasswordPolicy(t *testing.T) {
 		})
 	}
 }
-
-func TestRolePermissions(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		role       Role
-		permission string
-		allowed    bool
-	}{
-		{Administrator, "world.replace", true},
-		{Operator, "console.execute", true},
-		{Operator, "server.start", false},
-		{Operator, "backups.restore", false},
-		{Viewer, "monitor.read", true},
-		{Viewer, "backups.download", false},
-		{Viewer, "players.manage", false},
-	}
-	for _, test := range tests {
-		if got := Allows(test.role, test.permission); got != test.allowed {
-			t.Errorf("Allows(%q, %q) = %v, want %v", test.role, test.permission, got, test.allowed)
-		}
-	}
-}

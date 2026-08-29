@@ -6,7 +6,12 @@ info:
   description: |
     BlockOps accepts Minecraft commands only through RCON. It has no host-shell,
     Docker exec, or arbitrary file-management endpoint. Cookie-authenticated
-    mutations require `X-CSRF-Token` and backend role authorization.
+    mutations require `X-CSRF-Token` and backend authorization.
+
+    Everything scoped to one server lives under `/api/v1/servers/{serverId}`, and
+    everything owned by the installation lives under `/api/v1/fleet`. Every route
+    resolves one authorization decision: a caller who may not learn the server
+    exists gets `404`, and one who may but holds too small a role gets `403`.
 servers:
   - url: /
 security:
@@ -93,7 +98,53 @@ paths:
       responses:
         "204": { description: Session revoked and cookie cleared. }
         "403": { $ref: "#/components/responses/Error" }
-  /api/v1/overview:
+  /api/v1/auth/reauthenticate:
+    post:
+      tags: [Authentication]
+      operationId: reauthenticate
+      description: Confirms the current user's password and refreshes the ten-minute sensitive-action window for this session only.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 256, writeOnly: true }
+      responses:
+        "200":
+          description: Password confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authenticatedAt]
+                properties:
+                  authenticatedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/servers:
+    get:
+      tags: [Administration]
+      operationId: servers
+      description: Returns only servers assigned to the current user. A fleet owner sees every non-deleted server.
+      responses:
+        "200":
+          description: Visible servers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [servers]
+                properties:
+                  servers: { type: array, items: { $ref: "#/components/schemas/Server" } }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/overview:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Monitoring]
       operationId: overview
@@ -104,7 +155,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Overview" }
         "401": { $ref: "#/components/responses/Error" }
-  /api/v1/console/history:
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/console/history:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Console]
       operationId: consoleHistory
@@ -120,7 +173,9 @@ paths:
                   lines:
                     type: array
                     items: { $ref: "#/components/schemas/ConsoleLine" }
-  /api/v1/console/ws:
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/console/ws:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Console]
       operationId: liveConsole
@@ -128,7 +183,9 @@ paths:
       responses:
         "101": { description: WebSocket upgrade accepted. }
         "403": { $ref: "#/components/responses/Error" }
-  /api/v1/console/commands:
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/console/commands:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     post:
       tags: [Console]
       operationId: executeMinecraftCommand
@@ -154,8 +211,10 @@ paths:
                 properties:
                   response: { type: string }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "502": { $ref: "#/components/responses/Error" }
-  /api/v1/players:
+  /api/v1/servers/{serverId}/players:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Players]
       operationId: players
@@ -171,8 +230,10 @@ paths:
                   players:
                     type: array
                     items: { $ref: "#/components/schemas/Player" }
+        "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
-  /api/v1/players/actions:
+  /api/v1/servers/{serverId}/players/actions:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     post:
       tags: [Players]
       operationId: playerAction
@@ -192,8 +253,10 @@ paths:
       responses:
         "200": { description: RCON action completed. }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "502": { $ref: "#/components/responses/Error" }
-  /api/v1/backups:
+  /api/v1/servers/{serverId}/backups:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Backups]
       operationId: backups
@@ -209,6 +272,7 @@ paths:
                   backups:
                     type: array
                     items: { $ref: "#/components/schemas/Backup" }
+        "404": { $ref: "#/components/responses/Error" }
     post:
       tags: [Backups]
       operationId: createBackup
@@ -219,8 +283,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Backup" }
+        "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
-  /api/v1/backups/{id}:
+  /api/v1/servers/{serverId}/backups/{id}:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     delete:
       tags: [Backups]
       operationId: deleteBackup
@@ -230,7 +296,8 @@ paths:
       responses:
         "204": { description: Archive and catalog record deleted. }
         "404": { $ref: "#/components/responses/Error" }
-  /api/v1/backups/{id}/download:
+  /api/v1/servers/{serverId}/backups/{id}/download:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Backups]
       operationId: downloadBackup
@@ -241,7 +308,8 @@ paths:
           content:
             application/gzip: { schema: { type: string, contentEncoding: binary } }
         "404": { $ref: "#/components/responses/Error" }
-  /api/v1/backups/{id}/restore:
+  /api/v1/servers/{serverId}/backups/{id}/restore:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     post:
       tags: [Backups]
       operationId: restoreBackup
@@ -251,8 +319,10 @@ paths:
         - { $ref: "#/components/parameters/CSRF" }
       responses:
         "200": { description: Backup restored and container started. }
+        "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
-  /api/v1/world/download:
+  /api/v1/servers/{serverId}/world/download:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Worlds]
       operationId: downloadWorld
@@ -261,8 +331,10 @@ paths:
           description: Consistent world tar.gz attachment. Operator or administrator.
           content:
             application/gzip: { schema: { type: string, contentEncoding: binary } }
+        "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
-  /api/v1/world:
+  /api/v1/servers/{serverId}/world:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     put:
       tags: [Worlds]
       operationId: replaceWorld
@@ -274,9 +346,11 @@ paths:
           application/zip: { schema: { type: string, contentEncoding: binary } }
       responses:
         "200": { description: World replaced with rollback protection. }
+        "404": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
-  /api/v1/server/actions:
+  /api/v1/servers/{serverId}/actions:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     post:
       tags: [Administration]
       operationId: serverAction
@@ -294,8 +368,71 @@ paths:
       responses:
         "202": { description: Fixed-container action completed successfully. }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
-  /api/v1/audit:
+  /api/v1/servers/{serverId}/audit:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: serverAuditLog
+      description: One server's history, using the same cursor contract as the fleet log. Requires audit.read on the server.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: outcome
+          in: query
+          schema: { enum: [all, success, failure, denied], default: all }
+        - name: cursor
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 512 }
+      responses:
+        "200":
+          description: One filtered page in stable server order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events, nextCursor]
+                properties:
+                  events:
+                    type: array
+                    maxItems: 500
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+                  nextCursor: { type: [string, "null"], minLength: 1, maxLength: 512 }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/audit/export:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: exportServerAuditLog
+      description: Streams one server's history as formula-safe CSV, under the same row maximum as the fleet export.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: outcome
+          in: query
+          schema: { enum: [all, success, failure, denied], default: all }
+      responses:
+        "200":
+          description: Audit CSV attachment using the stored redacted details.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/fleet/audit:
     get:
       tags: [Administration]
       operationId: auditLog
@@ -329,7 +466,7 @@ paths:
                   nextCursor: { type: [string, "null"], minLength: 1, maxLength: 512 }
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
-  /api/v1/audit/export:
+  /api/v1/fleet/audit/export:
     get:
       tags: [Administration]
       operationId: exportAuditLog
@@ -352,7 +489,7 @@ paths:
               schema: { type: string }
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
-  /api/v1/users:
+  /api/v1/fleet/users:
     get:
       tags: [Administration]
       operationId: users
@@ -386,7 +523,7 @@ paths:
           description: User created.
           content:
             application/json: { schema: { $ref: "#/components/schemas/User" } }
-  /api/v1/users/{id}:
+  /api/v1/fleet/users/{id}:
     delete:
       tags: [Administration]
       operationId: disableUser
@@ -396,7 +533,7 @@ paths:
       responses:
         "204": { description: User disabled and sessions revoked. }
         "409": { $ref: "#/components/responses/Error" }
-  /api/v1/users/{id}/revoke-sessions:
+  /api/v1/fleet/users/{id}/revoke-sessions:
     post:
       tags: [Administration]
       operationId: revokeUserSessions
@@ -405,14 +542,43 @@ paths:
         - { $ref: "#/components/parameters/CSRF" }
       responses:
         "204": { description: Active sessions revoked. }
-  /api/v1/settings:
+  /api/v1/fleet/users/{id}/fleet-owner:
+    put:
+      tags: [Administration]
+      operationId: setFleetOwner
+      description: Adds or removes fleet ownership. Requires password confirmation within the last ten minutes and refuses to remove the final active fleet owner.
+      parameters:
+        - { $ref: "#/components/parameters/UserID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fleetOwner]
+              properties:
+                fleetOwner: { type: boolean }
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/User" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/settings:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
       tags: [Administration]
       operationId: settings
       description: Administrator only. Secret values are never returned.
       responses:
         "200": { description: Deployment and RCON status. }
-  /api/v1/settings/rcon:
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/settings/rcon:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
     put:
       tags: [Administration]
       operationId: updateRCON
@@ -430,7 +596,63 @@ paths:
                 password: { type: string, minLength: 8, maxLength: 256, writeOnly: true }
       responses:
         "200": { description: Encrypted credentials updated; password omitted. }
+        "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/grants:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: serverGrants
+      description: Lists assignments on one server. A server administrator or fleet owner can read them.
+      responses:
+        "200":
+          description: Server grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [grants]
+                properties:
+                  grants: { type: array, items: { $ref: "#/components/schemas/ServerGrant" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/grants/{userId}:
+    parameters:
+      - { $ref: "#/components/parameters/ServerID" }
+      - { $ref: "#/components/parameters/GrantUserID" }
+    put:
+      tags: [Administration]
+      operationId: setServerGrant
+      description: Creates or replaces one server assignment.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: Created or updated grant.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ServerGrant" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Administration]
+      operationId: revokeServerGrant
+      description: Revokes one server assignment. The next request and the next WebSocket authorization check see the change.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Grant revoked. }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     cookieAuth:
@@ -443,6 +665,12 @@ components:
       in: header
       required: true
       schema: { type: string }
+    ServerID:
+      name: serverId
+      in: path
+      required: true
+      description: The server this request acts on. An ID the caller holds no grant on answers 404, exactly like one that never existed.
+      schema: { type: string, pattern: "^[a-f0-9]{32}$" }
     BackupID:
       name: id
       in: path
@@ -450,6 +678,11 @@ components:
       schema: { type: string, pattern: "^[a-f0-9]{32}$" }
     UserID:
       name: id
+      in: path
+      required: true
+      schema: { type: string }
+    GrantUserID:
+      name: userId
       in: path
       required: true
       schema: { type: string }
@@ -479,20 +712,39 @@ components:
         password: { type: string, minLength: 12, maxLength: 256, writeOnly: true }
     User:
       type: object
-      required: [id, username, role, disabled, createdAt]
+      required: [id, username, role, fleetOwner, disabled, createdAt]
       properties:
         id: { type: string }
         username: { type: string }
-        role: { $ref: "#/components/schemas/Role" }
+        role: { $ref: "#/components/schemas/Role", description: The role this account holds on the server, read from its grant. }
+        fleetOwner: { type: boolean, description: Manages accounts, nodes, server creation, and installation settings. }
         disabled: { type: boolean }
         createdAt: { type: string, format: date-time }
+    Server:
+      type: object
+      required: [id, slug, name, state]
+      properties:
+        id: { type: string, pattern: "^[a-f0-9]{32}$" }
+        slug: { type: string }
+        name: { type: string }
+        state: { enum: [provisioning, active, suspended, deleting, failed] }
+    ServerGrant:
+      type: object
+      required: [userId, username, role, grantedBy, grantedAt]
+      properties:
+        userId: { type: string }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        grantedBy: { type: string }
+        grantedAt: { type: string, format: date-time }
     Session:
       type: object
-      required: [user, csrfToken, expiresAt]
+      required: [user, csrfToken, expiresAt, serverId]
       properties:
         user: { $ref: "#/components/schemas/User" }
         csrfToken: { type: string, description: Required in the X-CSRF-Token header for mutations. }
         expiresAt: { type: string, format: date-time }
+        serverId: { type: string, description: The server this session addresses under /api/v1/servers. }
     ConsoleLine:
       type: object
       required: [sequence, timestamp, text]
@@ -521,7 +773,7 @@ components:
         status: { type: string }
     AuditEvent:
       type: object
-      required: [id, occurredAt, action, target, sourceIp, outcome]
+      required: [id, occurredAt, action, target, sourceIp, outcome, principalKind]
       properties:
         id: { type: string }
         occurredAt: { type: string, format: date-time }
@@ -532,6 +784,13 @@ components:
         sourceIp: { type: string }
         outcome: { enum: [success, failure, denied] }
         details: { type: object, additionalProperties: true }
+        principalKind: { enum: [user, token, node, system], description: With principalId, the identity authority. username is display history and is not authoritative. }
+        principalId: { type: string }
+        serverId: { type: string, description: Absent on fleet history and on rows written before the migration that added this column. }
+        nodeId: { type: string }
+        requestId: { type: string, description: Ties every event from one HTTP request together. }
+        jobId: { type: string }
+        attempt: { type: integer, minimum: 1 }
     Overview:
       type: object
       description: Availability wrappers omit value and include message when an integration cannot report a metric.

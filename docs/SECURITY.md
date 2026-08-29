@@ -6,10 +6,11 @@ Security is part of the BlockOps release boundary. This document describes imple
 
 - One-time transactional administrator creation; no default credential.
 - Argon2id password hashes (64 MiB, 3 iterations, parallelism 2) and a 12–256 character policy using at least three character categories.
-- 256-bit opaque session tokens from `crypto/rand`, SHA-256 token identifiers in SQLite, fixed expiry, explicit logout, account-wide revocation, disabled-account checks, `HttpOnly`, `SameSite=Lax`, and production-configurable `Secure` cookies.
+- 256-bit opaque session tokens from `crypto/rand`, SHA-256 token identifiers in SQLite, fixed expiry, explicit logout, account-wide revocation, disabled-account checks, `HttpOnly`, `SameSite=Lax`, and production-configurable `Secure` cookies. Password confirmation opens a ten-minute sensitive-action window on the current session only.
 - Per-session CSRF token on every cookie-authenticated mutation, same-origin checks for setup/login, and strict WebSocket origin validation.
 - Per-source-and-username login attempt windows with generic credential failures and equivalent Argon2 work for unknown users.
-- Backend roles on every protected route. Administrator-only controls cover users, audit, security settings, world replacement, restore, start/stop, and credential rotation.
+- `auth.Authorize` checks every protected route against either a fleet-owner permission or a role on the server ID in the path. Server listings return only assigned servers. Unknown and unassigned IDs both return `404`. Grant revocation takes effect on the next request without a restart.
+- Fleet-owner changes require recent password confirmation. SQLite refuses to disable or demote the final active fleet owner inside the same transaction that changes the account.
 - Strict request/body/header/time limits, JSON unknown-field rejection, stable error envelopes, panic recovery, no CORS, CSP without `unsafe-inline`/`unsafe-eval`, clickjacking denial, `nosniff`, referrer, and permissions headers.
 - Explicit trusted-proxy CIDRs. Forwarded client addresses are ignored unless the direct peer is trusted.
 - Parameterized SQL, random public IDs, strictly parsed opaque audit cursors, bounded audit queries and exports, spreadsheet-formula neutralization on every CSV cell, and structured JSON application logs.

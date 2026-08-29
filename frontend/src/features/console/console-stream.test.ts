@@ -21,7 +21,7 @@ function streamHarness() {
     (state) => states.push(state),
     (line) => lines.push(line),
     {
-      url: "ws://blockops.test/api/v1/console/ws",
+      url: "ws://blockops.test/api/v1/servers/test-server/console/ws",
       createSocket: () => {
         const socket = createFakeSocket();
         sockets.push(socket);

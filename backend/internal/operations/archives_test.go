@@ -64,20 +64,6 @@ func TestWorldZipRejectsTraversalAndSiblingFiles(t *testing.T) {
 	}
 }
 
-func TestPlayerListAndCommandRedaction(t *testing.T) {
-	t.Parallel()
-	players := parsePlayerList("There are 2 of a max of 20 players online: Alex, Steve")
-	if players.Online != 2 || players.Max != 20 || len(players.Names) != 2 {
-		t.Fatalf("parsePlayerList() = %+v", players)
-	}
-	if got := RedactCommand("login my-secret-value"); got != "login [REDACTED]" {
-		t.Fatalf("RedactCommand() = %q", got)
-	}
-	if got := RedactCommand("say hello"); got != "say hello" {
-		t.Fatalf("RedactCommand() changed safe command: %q", got)
-	}
-}
-
 func writeZip(t *testing.T, path string, files map[string]string) {
 	t.Helper()
 	output, err := os.Create(path)

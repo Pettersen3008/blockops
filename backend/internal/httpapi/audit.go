@@ -26,7 +26,7 @@ const (
 	auditTimeLayout      = "2006-01-02T15:04:05.000000000Z"
 )
 
-var auditCSVHeader = []string{"occurred_at", "id", "user_id", "username", "action", "target", "source_ip", "outcome", "details"}
+var auditCSVHeader = []string{"occurred_at", "id", "principal_kind", "principal_id", "server_id", "node_id", "request_id", "job_id", "attempt", "user_id", "username", "action", "target", "source_ip", "outcome", "details"}
 
 type auditRequest struct {
 	Filter store.AuditFilter
@@ -50,7 +50,8 @@ func (s *Server) auditLog(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	page, err := s.store.ListAudit(r.Context(), store.AuditQuery{Filter: request.Filter, Before: request.Before, Limit: request.Limit})
+	serverID := r.PathValue("serverId")
+	page, err := s.store.ListAudit(r.Context(), store.AuditQuery{Filter: request.Filter, Before: request.Before, Limit: request.Limit, ServerID: serverID})
 	if err != nil {
 		s.internalError(w, r, err)
 		return
@@ -73,8 +74,11 @@ func (s *Server) auditExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
+	// Empty on the fleet route, set on the server route. One limit covers both,
+	// because it protects the same streaming path.
+	serverID := r.PathValue("serverId")
 	limit := min(auditMaxPageSize, s.config.MaxAuditExportRows)
-	page, err := s.store.ListAudit(r.Context(), store.AuditQuery{Filter: filter, Limit: limit})
+	page, err := s.store.ListAudit(r.Context(), store.AuditQuery{Filter: filter, Limit: limit, ServerID: serverID})
 	if err != nil {
 		s.internalError(w, r, err)
 		return
@@ -107,7 +111,7 @@ func (s *Server) auditExport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		limit = min(auditMaxPageSize, s.config.MaxAuditExportRows-exported)
-		page, err = s.store.ListAudit(r.Context(), store.AuditQuery{Filter: filter, Before: page.Next, Limit: limit})
+		page, err = s.store.ListAudit(r.Context(), store.AuditQuery{Filter: filter, Before: page.Next, Limit: limit, ServerID: serverID})
 		if err != nil {
 			s.logger.Error("audit export failed", "error", err, "request_id", requestID(r.Context()))
 			return
@@ -227,7 +231,10 @@ func auditCSVRecord(event store.AuditEvent) ([]string, error) {
 		return nil, fmt.Errorf("encode audit details: %w", err)
 	}
 	record := []string{
-		event.OccurredAt.UTC().Format(time.RFC3339Nano), event.ID, event.UserID, event.Username,
+		event.OccurredAt.UTC().Format(time.RFC3339Nano), event.ID,
+		string(event.PrincipalKind), event.PrincipalID, event.ServerID, event.NodeID,
+		event.RequestID, event.JobID, strconv.Itoa(event.Attempt),
+		event.UserID, event.Username,
 		event.Action, event.Target, event.SourceIP, event.Outcome, string(encodedDetails),
 	}
 	for index := range record {

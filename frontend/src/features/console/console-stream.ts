@@ -1,3 +1,4 @@
+import { serverPath } from "@/lib/api/server-path";
 import { consoleLineSchema } from "./console-schema";
 import type { ConsoleLine } from "./console-schema";
 
@@ -87,5 +88,5 @@ export function reconnectDelay(attempt: number): number {
 
 function consoleWebSocketUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/v1/console/ws`;
+  return `${protocol}//${window.location.host}${serverPath("/console/ws")}`;
 }

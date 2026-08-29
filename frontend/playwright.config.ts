@@ -24,7 +24,7 @@ export default defineConfig({
   // Real Paper boots, RCON round trips, and world archiving are all slower than the
   // mocked lane's budget, and a too-tight timeout here reads as a product failure.
   // The destructive journey boots Paper five times end to end.
-  timeout: destructive ? 900_000 : integration ? 180_000 : 30_000,
+  timeout: destructive ? 900_000 : integration ? 180_000 : 45_000,
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,

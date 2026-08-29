@@ -1,4 +1,5 @@
 import { api, parseApiResponse } from "@/lib/api/api";
+import { serverPath } from "@/lib/api/server-path";
 import { playerActionResponseSchema } from "../player-schema";
 import type { PlayerActionRequest } from "../player-schema";
 
@@ -10,7 +11,7 @@ export async function runPlayerAction(request: PlayerActionRequest) {
   // boundary, so re-parsing here bought nothing: it could only turn a caller bug into a raw
   // ZodError, which safeErrorMessage has no case for and renders as "Something went wrong."
   const body = { action: request.action, name: request.name, reason: request.reason };
-  const data = await api.post("/api/v1/players/actions", { body });
+  const data = await api.post(serverPath("/players/actions"), { body });
 
   return parseApiResponse(data, playerActionResponseSchema);
 }

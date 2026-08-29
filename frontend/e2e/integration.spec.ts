@@ -130,7 +130,7 @@ test("the real Minecraft integration reports live state and completes a safe bac
   const auditPath = await auditDownload.path();
   if (!auditPath) throw new Error("The audit export did not produce a local file.");
   const auditCSV = readFileSync(auditPath, "utf8");
-  expect(auditCSV).toContain("occurred_at,id,user_id,username,action,target,source_ip,outcome,details");
+  expect(auditCSV).toContain("occurred_at,id,principal_kind,principal_id,server_id,node_id,request_id,job_id,attempt,user_id,username,action,target,source_ip,outcome,details");
   expect(auditCSV).toContain("backup.create");
 
   await page.goto("/overview");

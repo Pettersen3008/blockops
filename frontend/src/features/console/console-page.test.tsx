@@ -12,6 +12,7 @@ const session: Session = {
   user: { id: "admin-1", username: "admin", role: "administrator", disabled: false, createdAt: "2026-08-17T12:00:00Z" },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 const lines = [
@@ -56,7 +57,7 @@ function renderConsole(currentSession = session) {
 describe("ConsolePage", () => {
   it("filters, pauses ingestion, resumes, and preserves severity semantics", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/console/history", () => HttpResponse.json({ lines })));
+    server.use(http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })));
     renderConsole();
 
     expect(await screen.findByText("[Server thread/INFO]: Ready")).toBeVisible();
@@ -96,8 +97,8 @@ describe("ConsolePage", () => {
     const requests: unknown[] = [];
     let csrfHeader: string | null = null;
     server.use(
-      http.get("/api/v1/console/history", () => HttpResponse.json({ lines })),
-      http.post("/api/v1/console/commands", async ({ request }) => {
+      http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })),
+      http.post("/api/v1/servers/test-server/console/commands", async ({ request }) => {
         requests.push(await request.json());
         csrfHeader = request.headers.get("X-CSRF-Token");
         return HttpResponse.json({ response: "Command completed" });
@@ -129,8 +130,8 @@ describe("ConsolePage", () => {
     const user = userEvent.setup();
     let attempt = 0;
     server.use(
-      http.get("/api/v1/console/history", () => HttpResponse.json({ lines })),
-      http.post("/api/v1/console/commands", () => {
+      http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })),
+      http.post("/api/v1/servers/test-server/console/commands", () => {
         attempt += 1;
         return attempt === 1
           ? HttpResponse.json({ error: { code: "command_failed", message: "Minecraft did not accept the command." } }, { status: 502 })
@@ -153,7 +154,7 @@ describe("ConsolePage", () => {
   });
 
   it("never renders malformed successful history or command responses", async () => {
-    server.use(http.get("/api/v1/console/history", () => HttpResponse.json({
+    server.use(http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({
       lines: [{ ...lines[0], sequence: -1, text: "<script>history unsafe</script>" }],
     })));
     const first = renderConsole();
@@ -163,8 +164,8 @@ describe("ConsolePage", () => {
     first.unmount();
 
     server.use(
-      http.get("/api/v1/console/history", () => HttpResponse.json({ lines })),
-      http.post("/api/v1/console/commands", () => HttpResponse.json({ response: { unsafe: "<script>command unsafe</script>" } })),
+      http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })),
+      http.post("/api/v1/servers/test-server/console/commands", () => HttpResponse.json({ response: { unsafe: "<script>command unsafe</script>" } })),
     );
     const user = userEvent.setup();
     renderConsole();
@@ -180,8 +181,8 @@ describe("ConsolePage", () => {
     let resolveFirst: ((response: Response) => void) | undefined;
     let requests = 0;
     server.use(
-      http.get("/api/v1/console/history", () => HttpResponse.json({ lines })),
-      http.post("/api/v1/console/commands", () => {
+      http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })),
+      http.post("/api/v1/servers/test-server/console/commands", () => {
         requests += 1;
         if (requests === 1) return new Promise<Response>((resolve) => { resolveFirst = resolve; });
         return HttpResponse.json({ response: "new result" });
@@ -208,7 +209,7 @@ describe("ConsolePage", () => {
   it("shows history failure and retries to the empty state", async () => {
     const user = userEvent.setup();
     let attempt = 0;
-    server.use(http.get("/api/v1/console/history", () => {
+    server.use(http.get("/api/v1/servers/test-server/console/history", () => {
       attempt += 1;
       return attempt === 1
         ? HttpResponse.json({ error: { code: "history_failed", message: "History unavailable." } }, { status: 503 })
@@ -223,7 +224,7 @@ describe("ConsolePage", () => {
   });
 
   it("keeps viewer command controls read-only", async () => {
-    server.use(http.get("/api/v1/console/history", () => HttpResponse.json({ lines })));
+    server.use(http.get("/api/v1/servers/test-server/console/history", () => HttpResponse.json({ lines })));
     renderConsole({ ...session, user: { ...session.user, role: "viewer" } });
 
     expect(await screen.findByText("Viewer access is read-only. Ask an administrator for the Operator role to submit Minecraft commands.")).toBeVisible();

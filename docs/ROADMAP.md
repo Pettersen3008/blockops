@@ -2,7 +2,7 @@
 
 BlockOps grows from a secure single-server dashboard into a self-hosted Minecraft fleet manager, keeping the Go control plane, React interface, typed HTTP APIs, bounded WebSocket streams, and audit model.
 
-Phases follow dependencies and risk, not dates. A phase starts only after the previous one meets its exit criteria. Phase 1 has tickets. Phase 2 has unsettled decisions. Phases 3 through 7 are outcomes and constraints, not plans.
+Phases follow dependencies and risk, not dates. A phase starts only after the previous one meets its exit criteria. Phases 1 and 2 have tickets. Phases 3 through 7 are outcomes and constraints, not plans.
 
 [VoxelDash](https://github.com/gnmyt/VoxelDash) is product inspiration for provisioning, Modrinth integration, file management, schedules, and performance history. BlockOps implements those around explicit server roots, pinned runtime templates, resource-scoped permissions, and authenticated node agents.
 
@@ -156,11 +156,124 @@ The tag workflow reuses the backend, frontend, mocked browser, container, and sa
 
 Phase 2 does not start with auth screens. It starts by fixing the contracts every later endpoint depends on. Write tickets only after all five decisions have reviewed schemas, a migration and rollback story for current installations, a threat model covering horizontal privilege escalation and confused-deputy requests, and one runnable negative authorization prototype using two users and two servers.
 
+D2-01 through D2-05 are decided in [`PHASE2.md`](PHASE2.md), which holds the schemas, the migration and rollback story, and the threat model. D2-02's mechanism ships with that document in `backend/internal/store/migrate.go`. The negative authorization prototype is `auth.Authorize` in `backend/internal/auth/scope.go` with its two-user, two-server test. The tickets below follow from it and resolve the three questions that document left open: a slug is never reused after deletion, fleet and per-server audit share one export limit, and `provisioning` and `failed` servers are visible to their grant holders.
+
 - **D2-01 Resource model.** Stable IDs and lifecycle states for servers and nodes. Whether `administrator` stays global or becomes global owner plus per-server grants. The permission evaluation input. The canonical route shape, expected to be `/api/v1/servers/{serverId}/...`. How the currently configured server becomes the first stored server without changing its Docker target, credentials, backups, or audit history.
 - **D2-02 Versioned migrations.** The store applies idempotent `CREATE TABLE IF NOT EXISTS` with no schema version. Decide a standard-library mechanism: ordered migrations run once in transactions and record their version, startup refuses a database newer than the binary, failure leaves the prior schema usable. Prove a copy of a current database migrates forward with users, sessions, audit, backups, and encrypted settings intact. No migration dependency unless an ordered SQL list becomes measurably inadequate.
 - **D2-03 Principals.** Separate records and authentication paths for local users, OIDC identities keyed by issuer and subject, hash-only API tokens with scopes and expiry, and browser sessions linked to one human. Define reauthentication for ownership transfer, MFA changes, recovery-code regeneration, node enrollment, server deletion, and sensitive-file access.
 - **D2-04 Node enrollment.** Who owns the internal CA and how its key is backed up. Enrollment token entropy, expiry, single-use semantics. Certificate subject, rotation overlap, revocation lookup, clock skew. How an operator verifies a node fingerprint before approval. The browser never receives node private keys or signing material.
 - **D2-05 Audit and job identity.** Immutable fields before fleet work produces events: principal type and ID, server and node IDs, request/job/operation/attempt IDs, action, target, source, timestamps, outcome, redacted details. The human username is display history, not identity authority.
+
+### Phase 2 tickets
+
+```mermaid
+flowchart LR
+  P201["P2-01 Fleet schema and adoption"] --> P202["P2-02 Scoped routes and evaluation"]
+  P202 --> P203["P2-03 Grant management"]
+  P202 --> P204["P2-04 API tokens and reauthentication"]
+  P201 --> P205["P2-05 Attributable audit"]
+  P202 --> P205
+  P203 --> P206["P2-06 Server-scoped interface"]
+  P204 --> P207["P2-07 Phase 2 gate"]
+  P205 --> P207
+  P206 --> P207
+```
+
+### P2-01: store the fleet and adopt the current server (complete)
+
+Migration 2 creates the D2-01 schema and turns the configured server into stored server one, without touching its Docker target, credentials, backups, or audit history.
+
+- Create `nodes`, `servers`, `server_secrets`, and `server_grants`. Rebuild `users` without `role` and with `fleet_owner`. Add `backups.server_id` and move `filename UNIQUE` to `UNIQUE (server_id, filename)`.
+- Adopt in the order D2-01 fixes: `local` node, one `active` server on slug `default`, the encrypted RCON password moved to `server_secrets` with its ciphertext unchanged, then one grant per existing user and `fleet_owner` for every existing administrator.
+- The `users` rebuild is the twelve-step SQLite table swap inside the migration transaction, because a `CHECK` constraint names the column being dropped.
+- A slug is permanent. Deletion keeps the row and its slug so audit history and backup filenames stay resolvable, and a new server cannot claim a retired name.
+- A mismatch between an environment variable and the adopted row is a startup error. Variables stay authoritative for the adopted server only until Phase 3.
+
+**Done when.** A copy of a Phase 1 database opens on migration 2 with its users, sessions, audit, backups, and RCON password intact, the operator signs in with the same credentials, and the dashboard drives the same container.
+
+Shipped in `backend/internal/store/migrate.go`. The role each account held moved to its grant, so `store.User.Role` now reads from `server_grants` and `administrator` also carries `fleet_owner`. The encrypted RCON credentials moved to `server_secrets` under the settings key they were encrypted with, because that string is the cipher's associated data. `auth.Allows` and the unprefixed routes are untouched; P2-02 replaces them.
+
+### P2-02: authorize every route against one server (complete)
+
+Depends on P2-01. `auth.Authorize` moves from prototype to the only authorization path, and the routes carry the server ID the evaluator needs.
+
+- Cut over to `/api/v1/servers/{serverId}/...` and `/api/v1/fleet/...` from the D2-01 table. Remove the unprefixed paths with no aliases.
+- Resolve the principal's grants and the server's lifecycle state per request, with no authorization cache, so revocation lands on the next request.
+- Answer `404` when `Decision.Visible` is false and `403` when it is true, from one helper, so no handler invents its own status. Unknown and unassigned IDs are indistinguishable.
+- Delete `auth.Allows`. Derive each permission string from a validated enum, never from concatenated request input.
+- The console WebSocket authorizes on the server ID in its path before upgrading, and closes when the grant disappears rather than only at connect time.
+- Update OpenAPI beside the handlers.
+
+**Done when.** Substituting another server's ID in any URL, body, or WebSocket path returns `404` for an ungranted server, and no handler reaches Docker or RCON without a `Decision`.
+
+Shipped in `backend/internal/httpapi/server.go`. `require` and the server action both resolve their decision through one `authorize` helper, which reads the grant and the lifecycle state from `store.ServerAccess` on every request and writes both the `404` and the `403`. A server ID that names no row denies before `Authorize` runs, because the fleet owner's implicit grant would otherwise cover an invented one. `auth.Allows` is deleted. The console socket re-reads the session and the grant every thirty seconds, so a disabled account, a revoked session, and a removed grant all end the stream. Per-server audit is the one row of the D2-01 table this ticket left alone: `audit_events` has no `server_id` until P2-05, so `/api/v1/fleet/audit` ships and the server-scoped reader ships with the column that can scope it. The dashboard reads its server ID from the session response until P2-06 makes it a route parameter.
+
+### P2-03: manage grants and fleet ownership (complete)
+
+Depends on P2-02. A fleet owner assigns per-server roles, and a server administrator manages grants on the server it holds.
+
+- `/api/v1/fleet/users` for accounts and the `fleet_owner` bit. `/api/v1/servers/{serverId}/grants` for per-server roles, gated by `grants.manage`.
+- Listing servers returns only granted rows plus every row for a fleet owner. `provisioning` and `failed` servers are visible to their grant holders, because hiding a server whose creation failed hides the only place to read why.
+- Transferring fleet ownership and removing the last fleet owner are refused, and the transfer is reauthenticated.
+- Revoking a grant is audited with both the subject and the granting principal.
+
+**Done when.** A grant removed while its holder is browsing takes effect on that holder's next request with no restart, and an installation can never reach zero fleet owners.
+
+Shipped in `backend/internal/store/store.go` and `backend/internal/httpapi/server.go`. `GET /api/v1/servers` filters rows by the current user's grants and returns every non-deleted row to a fleet owner. Server administrators and fleet owners list, create, replace, and revoke assignments under `/api/v1/servers/{serverId}/grants`. Each authorization check reads the grant again, so the subject's next request loses access after revocation.
+
+Fleet ownership changes use `/api/v1/fleet/users/{id}/fleet-owner`. Migration 4 records `authenticated_at` on each session, and `/api/v1/auth/reauthenticate` refreshes only the current session after a password check. Ownership changes require that check within ten minutes. Store transactions refuse both disabling and demoting the final active fleet owner. Creating an administrator grant no longer creates a fleet owner.
+
+### P2-04: separate the remaining principals
+
+Depends on P2-02. API tokens and the reauthentication window from D2-03.
+
+- `api_tokens` stores a SHA-256 hash, an owning user, a required expiry, and a scope that intersects the owner's grants at evaluation time and never exceeds them. Plaintext is shown once.
+- `sessions` gains `authenticated_at`, set at login and at each reauthentication, updated on the current session only.
+- The ten-minute window guards ownership transfer, MFA changes, recovery-code regeneration, node approval, server deletion, token creation, and sensitive-file reads.
+- Token authentication is a separate path from session authentication, and neither accepts the other's credential. Nodes are refused for user permissions.
+- `oidc_identities` and MFA tables are designed but not created, because an empty reserved table is scaffolding.
+
+**Done when.** Disabling a user stops every token they issued on the next request, and an expired or revoked token is indistinguishable from an unknown one.
+
+P2-03 shipped `sessions.authenticated_at`, the password-confirmation endpoint, and the fleet-owner guard because ownership changes need them. This ticket still owns API tokens and applies the same window to the remaining sensitive actions.
+
+### P2-05: make audit attributable before fleet work writes to it (complete)
+
+Depends on P2-01 and P2-02. The D2-05 columns land before multi-server operations start producing events.
+
+- Add `principal_kind`, `principal_id`, `server_id`, `node_id`, `request_id`, `job_id`, and `attempt`, plus the `(server_id, occurred_at DESC, id DESC)` index. Keep `username` as display history.
+- No foreign keys from `audit_events`. Deleting a server must not delete or block its history.
+- `BEFORE UPDATE` and `BEFORE DELETE` triggers raise. A migration that must touch the table drops and recreates them inside its own transaction.
+- Rows written before the migration keep a null `server_id` and read as fleet history. Attributing them to the adopted server would be a fabrication.
+- Per-server audit at `/api/v1/servers/{serverId}/audit` reuses P1-05's cursor contract unchanged. Fleet and per-server export share one `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`, because the limit protects the same streaming path.
+
+**Done when.** Every event written after the migration names its principal kind and ID, an `UPDATE` against `audit_events` fails, and a per-server traversal never duplicates an event within one cursor chain.
+
+Shipped as migration 3 in `backend/internal/store/migrate.go`. The seven columns and the `(server_id, occurred_at DESC, id DESC)` index are plain `ALTER TABLE` additions, because nothing in the table is being rewritten, and two triggers raise on `UPDATE` and `DELETE`. `WriteAudit` defaults `principal_kind` to `user` and `attempt` to `1`, so a caller that names neither still writes an attributable row, and the HTTP audit helper reads the principal from the session and the server from the route rather than from anything the request body can set. A request with no session writes `system`: setup and a failed login are the installation acting on itself, not an anonymous user.
+
+`ServerID` on `AuditQuery` is the only new read parameter, so the fleet and per-server routes share both handlers and both share one `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`. Per-server reads exclude the pre-migration rows, whose `server_id` is null, and the export gained the identity columns ahead of `user_id`. The dashboard is unchanged: it renders `username`, which D2-05 keeps as display history, and P2-06 owns the per-server view.
+
+### P2-06: scope the interface to a server
+
+Depends on P2-03. The dashboard addresses a server explicitly and mirrors backend policy without deciding it.
+
+- Routes carry the server ID. A grant holder with one server lands on it directly rather than choosing from a list of one.
+- The permission mirror is generated from the same permission table the backend evaluates, so the two cannot drift into separate vocabularies.
+- A `404` from an ungranted server renders as not found, never as forbidden, so the interface leaks nothing the API withheld.
+- Suspended, deleting, provisioning, and failed servers render read-only with the reason, rather than offering controls that will be refused.
+
+**Done when.** Hiding a control never stands in for an authorization check, and the mocked browser journey covers a viewer, an operator, and a fleet owner against the same server.
+
+### P2-07: make Phase 2 a gate
+
+Depends on P2-04, P2-05, P2-06.
+
+- A negative authorization browser journey with two users and two servers, asserting `404` for URL substitution and a stale grant losing access mid-session.
+- An upgrade rehearsal from a released Phase 1 image to the Phase 2 build on a copy of a real database, and the documented restore of that copy afterwards.
+- The safe real-server journey runs against the adopted server on its new route shape.
+- Record anything unverified in the release notes rather than replacing it with a claim.
+
+**Done when.** Every Phase 2 exit criterion has reproducible evidence, and an operator can upgrade and roll back with only the documented file copy.
 
 **Exit criteria.** Users cannot enumerate or operate unassigned servers by changing URLs or bodies. Revoking a session, token, certificate, or assignment takes effect without a restart. Browser permissions stay a usability mirror of backend policy. Recovery flows cannot bypass MFA or transfer ownership silently.
 

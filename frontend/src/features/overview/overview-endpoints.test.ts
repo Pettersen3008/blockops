@@ -17,7 +17,7 @@ afterEach(() => configureCsrfToken(() => undefined));
 
 describe("overview endpoints", () => {
   it("keeps the GET contract at its endpoint and rejects malformed success", async () => {
-    server.use(http.get("/api/v1/overview", () => HttpResponse.json({ unsafe: "value" })));
+    server.use(http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json({ unsafe: "value" })));
 
     await expect(getOverview()).rejects.toMatchObject({ code: "invalid_response" });
   });
@@ -26,8 +26,8 @@ describe("overview endpoints", () => {
     configureCsrfToken(() => "csrf-token");
     let request: { body: unknown; csrf: string | null } | undefined;
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/server/actions", async ({ request: incoming }) => {
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/actions", async ({ request: incoming }) => {
         request = { body: await incoming.json(), csrf: incoming.headers.get("X-CSRF-Token") };
         return HttpResponse.json({ status: "restart requested" }, { status: 202 });
       }),
