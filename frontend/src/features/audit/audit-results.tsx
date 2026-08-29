@@ -1,8 +1,6 @@
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table";
 import { Card, EmptyState, StatusPill, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@blockops/ui";
 import { formatDate } from "@/formatters";
-import { matchesAuditFilters } from "./audit-filters";
-import type { AuditFilters } from "./audit-filters";
 import type { AuditEvent } from "./audit-schema";
 
 const features = tableFeatures({});
@@ -38,16 +36,14 @@ const columns = columnHelper.columns([
   }),
 ]);
 
-export function AuditResults({ events, filters }: { events: AuditEvent[]; filters: AuditFilters }) {
-  const filtered = events.filter((event) => matchesAuditFilters(event, filters.query, filters.outcome));
-  const table = useTable({ data: filtered, columns, features });
+export function AuditResults({ events, filtered }: { events: AuditEvent[]; filtered: boolean }) {
+  const table = useTable({ data: events, columns, features });
   const rows = table.getRowModel().rows;
 
   if (events.length === 0) {
-    return <EmptyState title="No audit events yet" description="Administrative actions will appear here." />;
-  }
-  if (rows.length === 0) {
-    return <EmptyState title="No matching audit events" description="Change the filters or perform an administrative action." />;
+    return filtered
+      ? <EmptyState title="No matching audit events" description="Change the filters or perform an administrative action." />
+      : <EmptyState title="No audit events yet" description="Administrative actions will appear here." />;
   }
 
   return (

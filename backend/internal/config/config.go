@@ -33,10 +33,15 @@ type Config struct {
 	SessionTTL         time.Duration
 	TrustedProxies     []*net.IPNet
 	MaxUploadBytes     int64
+	MaxAuditExportRows int
 	EncryptionKey      []byte
 }
 
 func Load() (Config, error) {
+	maxAuditExportRows, err := strconv.Atoi(env("BLOCKOPS_MAX_AUDIT_EXPORT_ROWS", "10000"))
+	if err != nil {
+		return Config{}, errors.New("BLOCKOPS_MAX_AUDIT_EXPORT_ROWS must be an integer")
+	}
 	cfg := Config{
 		ListenAddress:      env("BLOCKOPS_LISTEN_ADDRESS", ":8080"),
 		DatabasePath:       env("BLOCKOPS_DATABASE_PATH", "/data/blockops.db"),
@@ -51,9 +56,9 @@ func Load() (Config, error) {
 		CookieSecure:       envBool("BLOCKOPS_COOKIE_SECURE", true),
 		SessionTTL:         envDuration("BLOCKOPS_SESSION_TTL", 12*time.Hour),
 		MaxUploadBytes:     envInt64("BLOCKOPS_MAX_UPLOAD_BYTES", 2<<30),
+		MaxAuditExportRows: maxAuditExportRows,
 	}
 
-	var err error
 	cfg.DatabasePath, err = absolutePath(cfg.DatabasePath, "database path")
 	if err != nil {
 		return Config{}, err
@@ -77,6 +82,9 @@ func Load() (Config, error) {
 	}
 	if cfg.MaxUploadBytes < 1<<20 || cfg.MaxUploadBytes > 20<<30 {
 		return Config{}, errors.New("BLOCKOPS_MAX_UPLOAD_BYTES must be between 1 MiB and 20 GiB")
+	}
+	if cfg.MaxAuditExportRows < 1 || cfg.MaxAuditExportRows > 100000 {
+		return Config{}, errors.New("BLOCKOPS_MAX_AUDIT_EXPORT_ROWS must be between 1 and 100000")
 	}
 	if cfg.PublicOrigin != "" {
 		origin, parseErr := url.Parse(cfg.PublicOrigin)

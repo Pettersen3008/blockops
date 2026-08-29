@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { Card, Input } from "@blockops/ui";
 import type { AuditFilters } from "./audit-filters";
+import { AUDIT_SEARCH_MAX_LENGTH } from "./audit-schema";
 import type { AuditOutcomeFilter } from "./audit-schema";
 
 const outcomes = ["all", "success", "failure", "denied"] as const;
@@ -20,6 +21,7 @@ export function AuditFilterControls({
         <Input
           className="h-11 pl-[38px]!"
           type="search"
+          maxLength={AUDIT_SEARCH_MAX_LENGTH}
           placeholder="Search actor, action, target, source, or details"
           value={filters.query}
           onChange={(event) => onChange(event.target.value, filters.outcome)}

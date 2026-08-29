@@ -12,7 +12,7 @@ Security is part of the BlockOps release boundary. This document describes imple
 - Backend roles on every protected route. Administrator-only controls cover users, audit, security settings, world replacement, restore, start/stop, and credential rotation.
 - Strict request/body/header/time limits, JSON unknown-field rejection, stable error envelopes, panic recovery, no CORS, CSP without `unsafe-inline`/`unsafe-eval`, clickjacking denial, `nosniff`, referrer, and permissions headers.
 - Explicit trusted-proxy CIDRs. Forwarded client addresses are ignored unless the direct peer is trusted.
-- Parameterized SQL, random public IDs, bounded audit queries, and structured JSON application logs.
+- Parameterized SQL, random public IDs, strictly parsed opaque audit cursors, bounded audit queries and exports, spreadsheet-formula neutralization on every CSV cell, and structured JSON application logs.
 - Sensitive console commands are redacted in audit details; passwords and session tokens are never logged.
 - AES-256-GCM encryption with purpose-bound associated data for stored RCON credentials. The encryption key remains external.
 - Fixed RCON destination, no outbound URL fetch feature, no dynamic code evaluation, no raw HTML rendering, no auth tokens in Web Storage, and no third-party browser scripts.

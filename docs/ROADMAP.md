@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 through P1-04 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
+P1-01 through P1-05 are `complete`. Every other ticket is `planned`.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -110,7 +110,7 @@ Depends on P1-03. Stop, restart, restore, and world replacement get real coverag
 
 `frontend/e2e/destructive.spec.ts` runs only when the integration flag, destructive flag, and exact `blockops-integration` project identity agree. It also reads the protected deployment settings and refuses to act on any container except `blockops-integration-minecraft`. The journey uses a downloaded real `level.dat` to generate minimal replacement ZIPs, proves a backup restores its marker, and proves a traversal ZIP leaves that marker untouched. Focused Go tests force the replacement start to fail and assert the old world returns before the recovery start, then cancel an archive request and assert `save-on` uses a fresh context. The lane passed twice from newly created volumes in 3.0 and 2.9 minutes; the existing safe journey also passed after the destructive flow and confirmed the full `save-off` and `save-on` cycle.
 
-### P1-05: paginate and export the audit log
+### P1-05: paginate and export the audit log (complete)
 
 Administrators traverse and export a growing history without a fixed newest-200 snapshot.
 
@@ -122,6 +122,8 @@ Administrators traverse and export a growing history without a fixed newest-200 
 - Update OpenAPI beside the handlers.
 
 **Done when.** A stable traversal never duplicates an event within one cursor chain, and exported cells cannot execute formulas in a spreadsheet.
+
+The API now applies outcome and literal search filters before `(occurred_at DESC, id DESC)` cursor traversal. Existing exact-second timestamps migrate to the fixed-width UTC form used by new events, so SQLite text order stays chronological. The dashboard keeps filters in the URL, keeps cursors in `useInfiniteQuery`, and loads each next page only when an administrator selects **Load more**. CSV export reuses the filtered page query, stops at `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`, reads stored redacted details, and prefixes spreadsheet formula cells. Store, boundary, CSV, config, frontend, and production-binary browser checks cover the flow.
 
 ### P1-06: publish a verifiable release image
 

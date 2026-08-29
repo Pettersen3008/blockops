@@ -122,6 +122,16 @@ test("the real Minecraft integration reports live state and completes a safe bac
     .filter({ hasText: "backup.create" })
     .filter({ hasText: username })
     .first()).toBeVisible();
+  const [auditDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Export CSV" }).click(),
+  ]);
+  expect(auditDownload.suggestedFilename()).toMatch(/^blockops-audit-\d{8}-\d{6}\.csv$/);
+  const auditPath = await auditDownload.path();
+  if (!auditPath) throw new Error("The audit export did not produce a local file.");
+  const auditCSV = readFileSync(auditPath, "utf8");
+  expect(auditCSV).toContain("occurred_at,id,user_id,username,action,target,source_ip,outcome,details");
+  expect(auditCSV).toContain("backup.create");
 
   await page.goto("/overview");
   await expect(serverState).toBeVisible();

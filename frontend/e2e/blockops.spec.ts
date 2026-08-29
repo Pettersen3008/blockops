@@ -318,14 +318,28 @@ test("secure first-run and primary operations remain usable when integrations ar
       details: { permission: "settings.manage" },
     },
   ];
-  await page.route("**/api/v1/audit?limit=200", async (route) => {
+  const auditRoute = "**/api/v1/audit?*";
+  await page.route(auditRoute, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ events: browserAuditEvents }) });
+    const searchParams = new URL(route.request().url()).searchParams;
+    const outcome = searchParams.get("outcome");
+    const query = (searchParams.get("q") ?? "").trim().toLowerCase();
+    const events = browserAuditEvents.filter((event) => {
+      if (outcome && outcome !== "all" && event.outcome !== outcome) return false;
+      return !query || [event.username, event.action, event.target, event.sourceIp, JSON.stringify(event.details ?? {})]
+        .join(" ").toLowerCase().includes(query);
+    });
+    const cursor = searchParams.get("cursor");
+    const pageEvents = outcome === "all" && !query ? (cursor ? events.slice(2) : events.slice(0, 2)) : events;
+    const nextCursor = outcome === "all" && !query && !cursor && events.length > 2 ? "next-page" : null;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ events: pageEvents, nextCursor }) });
   });
   await page.goto("/audit?outcome=unexpected");
   await expect(page.getByText("Loading administrative evidence")).toBeVisible();
   await expect(page).toHaveURL(/\/audit\?outcome=all$/);
   await expect(page.getByRole("cell", { name: "auth.setup" })).toBeVisible();
+  await page.getByRole("button", { name: "Load more" }).click();
+  await expect(page.getByRole("cell", { name: "authorization.denied" })).toBeVisible();
   await page.getByRole("button", { name: "failure" }).click();
   await expect(page).toHaveURL(/\/audit\?outcome=failure$/);
   await expect(page.getByRole("cell", { name: "backup.create" })).toBeVisible();
@@ -353,27 +367,27 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("searchbox", { name: "Search audit events" })).toBeFocused();
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  await page.unroute("**/api/v1/audit?limit=200");
-  await page.route("**/api/v1/audit?limit=200", (route) => route.fulfill({
+  await page.unroute(auditRoute);
+  await page.route(auditRoute, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ events: [{ ...browserAuditEvents[0], action: "<script>unsafe</script>", outcome: "unknown" }] }),
+    body: JSON.stringify({ events: [{ ...browserAuditEvents[0], action: "<script>unsafe</script>", outcome: "unknown" }], nextCursor: null }),
   }));
   await page.reload();
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
   await expect(page.getByText("<script>unsafe</script>", { exact: true })).toBeHidden();
 
-  await page.unroute("**/api/v1/audit?limit=200");
-  await page.route("**/api/v1/audit?limit=200", (route) => route.fulfill({
+  await page.unroute(auditRoute);
+  await page.route(auditRoute, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ events: [] }),
+    body: JSON.stringify({ events: [], nextCursor: null }),
   }));
   await page.reload();
   await expect(page.getByRole("heading", { name: "No audit events yet" })).toBeVisible();
 
-  await page.unroute("**/api/v1/audit?limit=200");
+  await page.unroute(auditRoute);
 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();

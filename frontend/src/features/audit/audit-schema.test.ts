@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { auditCatalogSchema } from "./audit-schema";
+import { auditPageSchema } from "./audit-schema";
 
 const event = {
   id: "0123456789abcdef0123456789abcdef",
@@ -14,12 +14,13 @@ const event = {
 
 describe("audit schema", () => {
   it("accepts the bounded audit catalog contract", () => {
-    expect(auditCatalogSchema.safeParse({ events: [event] }).success).toBe(true);
+    expect(auditPageSchema.safeParse({ events: [event], nextCursor: null }).success).toBe(true);
   });
 
   it("rejects malformed identifiers, outcomes, and oversized catalogs", () => {
-    expect(auditCatalogSchema.safeParse({ events: [{ ...event, id: "unsafe/id" }] }).success).toBe(false);
-    expect(auditCatalogSchema.safeParse({ events: [{ ...event, outcome: "unknown" }] }).success).toBe(false);
-    expect(auditCatalogSchema.safeParse({ events: Array.from({ length: 201 }, () => event) }).success).toBe(false);
+    expect(auditPageSchema.safeParse({ events: [{ ...event, id: "unsafe/id" }], nextCursor: null }).success).toBe(false);
+    expect(auditPageSchema.safeParse({ events: [{ ...event, outcome: "unknown" }], nextCursor: null }).success).toBe(false);
+    expect(auditPageSchema.safeParse({ events: Array.from({ length: 501 }, () => event), nextCursor: null }).success).toBe(false);
+    expect(auditPageSchema.safeParse({ events: [event] }).success).toBe(false);
   });
 });

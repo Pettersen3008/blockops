@@ -28,6 +28,7 @@ flowchart LR
 - The browser console also caps itself at 2,000 lines and defers search filtering.
 - One mutex serializes backup, download, restore, and world-replacement operations to prevent overlapping save modes or directory swaps.
 - Docker inspect and stats calls keep a 12-second client limit. Start, stop, and restart use a 45-second client limit because Docker receives a 30-second graceful-stop budget; the guard keeps a bounded 50-second response window around those calls.
+- Audit pages use one SQLite query for server-side filters and `(occurred_at DESC, id DESC)` cursor traversal. CSV export reuses those bounded pages and closes each database read before writing to the network, so a slow download never holds SQLite's only connection.
 - SQLite uses WAL, foreign keys, a busy timeout, and one connection to match the single-instance MVP. Multiple dashboard replicas are not supported.
 
 ## Consistency protocols

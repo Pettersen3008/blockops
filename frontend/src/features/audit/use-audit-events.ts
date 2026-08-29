@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { AuditFilters } from "./audit-filters";
 import { auditQuery } from "./audit-query";
 
-export function useAuditEvents() {
-  return useQuery(auditQuery());
+export function useAuditEvents(filters: AuditFilters) {
+  return useInfiniteQuery(auditQuery(filters));
 }

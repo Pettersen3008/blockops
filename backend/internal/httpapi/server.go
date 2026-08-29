@@ -95,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/v1/world", s.require("world.replace", http.HandlerFunc(s.replaceWorld)))
 	mux.Handle("POST /api/v1/server/actions", s.authenticated(http.HandlerFunc(s.serverAction)))
 	mux.Handle("GET /api/v1/audit", s.require("audit.read", http.HandlerFunc(s.auditLog)))
+	mux.Handle("GET /api/v1/audit/export", s.require("audit.read", http.HandlerFunc(s.auditExport)))
 	mux.Handle("GET /api/v1/users", s.require("users.manage", http.HandlerFunc(s.users)))
 	mux.Handle("POST /api/v1/users", s.require("users.manage", http.HandlerFunc(s.createUser)))
 	mux.Handle("DELETE /api/v1/users/{id}", s.require("users.manage", http.HandlerFunc(s.disableUser)))
@@ -505,16 +506,6 @@ func (s *Server) serverAction(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "server."+input.Action, s.config.MinecraftContainer, "success", nil, nil)
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": input.Action + " requested"})
-}
-
-func (s *Server) auditLog(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	events, err := s.store.ListAudit(r.Context(), limit)
-	if err != nil {
-		s.internalError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"events": events})
 }
 
 func (s *Server) users(w http.ResponseWriter, r *http.Request) {

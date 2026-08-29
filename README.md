@@ -112,6 +112,7 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
 - Add only the direct proxy CIDR(s) to `BLOCKOPS_TRUSTED_PROXIES`. Otherwise forwarded client-address headers are ignored.
 - Keep the dashboard bound to loopback when the proxy runs on the host. For a containerized proxy, attach it to an explicit private network instead of exposing BlockOps publicly.
 - Match proxy body-size and time-out limits to `BLOCKOPS_MAX_UPLOAD_BYTES` if world uploads are enabled.
+- Set `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS` between 1 and 100000 to cap each administrator CSV export. The default is 10000.
 
 ## Local development
 

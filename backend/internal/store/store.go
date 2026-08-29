@@ -55,6 +55,36 @@ type AuditEvent struct {
 	Details    map[string]any `json:"details,omitempty"`
 }
 
+type AuditOutcome string
+
+const (
+	AuditOutcomeAll     AuditOutcome = ""
+	AuditOutcomeSuccess AuditOutcome = "success"
+	AuditOutcomeFailure AuditOutcome = "failure"
+	AuditOutcomeDenied  AuditOutcome = "denied"
+)
+
+type AuditFilter struct {
+	Search  string
+	Outcome AuditOutcome
+}
+
+type AuditCursor struct {
+	OccurredAt time.Time
+	ID         string
+}
+
+type AuditQuery struct {
+	Filter AuditFilter
+	Before *AuditCursor
+	Limit  int
+}
+
+type AuditPage struct {
+	Events []AuditEvent
+	Next   *AuditCursor
+}
+
 type Backup struct {
 	ID        string    `json:"id"`
 	Filename  string    `json:"-"`
@@ -115,7 +145,11 @@ CREATE TABLE IF NOT EXISTS audit_events (
   outcome TEXT NOT NULL CHECK (outcome IN ('success','failure','denied')),
   details_json TEXT NOT NULL DEFAULT '{}'
 );
-CREATE INDEX IF NOT EXISTS idx_audit_occurred ON audit_events(occurred_at DESC);
+UPDATE audit_events
+SET occurred_at = substr(occurred_at, 1, 19) || '.000000000Z'
+WHERE length(occurred_at) = 20 AND substr(occurred_at, 20, 1) = 'Z';
+DROP INDEX IF EXISTS idx_audit_occurred;
+CREATE INDEX IF NOT EXISTS idx_audit_order ON audit_events(occurred_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS backups (
   id TEXT PRIMARY KEY,
   filename TEXT NOT NULL UNIQUE,
@@ -313,34 +347,65 @@ func (s *Store) WriteAudit(ctx context.Context, event AuditEvent) error {
 	if err != nil {
 		return fmt.Errorf("encode audit details: %w", err)
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,user_id,username,action,target,source_ip,outcome,details_json) VALUES(?,?,?,?,?,?,?,?,?)`, event.ID, formatTime(event.OccurredAt), nullable(event.UserID), event.Username, event.Action, event.Target, event.SourceIP, event.Outcome, string(details))
+	_, err = s.db.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,user_id,username,action,target,source_ip,outcome,details_json) VALUES(?,?,?,?,?,?,?,?,?)`, event.ID, formatAuditTime(event.OccurredAt), nullable(event.UserID), event.Username, event.Action, event.Target, event.SourceIP, event.Outcome, string(details))
 	if err != nil {
 		return fmt.Errorf("write audit event: %w", err)
 	}
 	return nil
 }
 
-func (s *Store) ListAudit(ctx context.Context, limit int) ([]AuditEvent, error) {
-	if limit < 1 || limit > 500 {
-		limit = 100
+func (s *Store) ListAudit(ctx context.Context, query AuditQuery) (AuditPage, error) {
+	conditions := []string{"1=1"}
+	arguments := make([]any, 0, 10)
+	if query.Filter.Outcome != AuditOutcomeAll {
+		conditions = append(conditions, "outcome = ?")
+		arguments = append(arguments, query.Filter.Outcome)
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id,occurred_at,COALESCE(user_id,''),username,action,target,source_ip,outcome,details_json FROM audit_events ORDER BY occurred_at DESC LIMIT ?`, limit)
+	if query.Filter.Search != "" {
+		conditions = append(conditions, `(instr(lower(username), lower(?)) > 0
+OR instr(lower(action), lower(?)) > 0
+OR instr(lower(target), lower(?)) > 0
+OR instr(lower(source_ip), lower(?)) > 0
+OR instr(lower(COALESCE(NULLIF(details_json, 'null'), '{}')), lower(?)) > 0)`)
+		for range 5 {
+			arguments = append(arguments, query.Filter.Search)
+		}
+	}
+	if query.Before != nil {
+		conditions = append(conditions, "(occurred_at < ? OR (occurred_at = ? AND id < ?))")
+		occurred := formatAuditTime(query.Before.OccurredAt)
+		arguments = append(arguments, occurred, occurred, query.Before.ID)
+	}
+	arguments = append(arguments, query.Limit+1)
+	statement := `SELECT id,occurred_at,COALESCE(user_id,''),username,action,target,source_ip,outcome,details_json
+FROM audit_events WHERE ` + strings.Join(conditions, " AND ") + `
+ORDER BY occurred_at DESC, id DESC LIMIT ?`
+	rows, err := s.db.QueryContext(ctx, statement, arguments...)
 	if err != nil {
-		return nil, fmt.Errorf("list audit events: %w", err)
+		return AuditPage{}, fmt.Errorf("list audit events: %w", err)
 	}
 	defer rows.Close()
-	events := make([]AuditEvent, 0, limit)
+	events := make([]AuditEvent, 0, query.Limit+1)
 	for rows.Next() {
 		var event AuditEvent
 		var occurred, details string
 		if err := rows.Scan(&event.ID, &occurred, &event.UserID, &event.Username, &event.Action, &event.Target, &event.SourceIP, &event.Outcome, &details); err != nil {
-			return nil, fmt.Errorf("scan audit event: %w", err)
+			return AuditPage{}, fmt.Errorf("scan audit event: %w", err)
 		}
 		event.OccurredAt = parseTime(occurred)
 		_ = json.Unmarshal([]byte(details), &event.Details)
 		events = append(events, event)
 	}
-	return events, rows.Err()
+	if err := rows.Err(); err != nil {
+		return AuditPage{}, err
+	}
+	page := AuditPage{Events: events}
+	if len(events) > query.Limit {
+		page.Events = events[:query.Limit]
+		last := page.Events[len(page.Events)-1]
+		page.Next = &AuditCursor{OccurredAt: last.OccurredAt, ID: last.ID}
+	}
+	return page, nil
 }
 
 func (s *Store) CreateBackup(ctx context.Context, backup Backup) error {
@@ -426,6 +491,10 @@ func classifyConflict(operation string, err error) error {
 }
 
 func formatTime(value time.Time) string { return value.UTC().Format(time.RFC3339Nano) }
+
+func formatAuditTime(value time.Time) string {
+	return value.UTC().Format("2006-01-02T15:04:05.000000000Z")
+}
 
 func parseTime(value string) time.Time {
 	parsed, _ := time.Parse(time.RFC3339Nano, value)

@@ -1,6 +1,5 @@
-import { z } from "zod";
-import { auditOutcomeFilterSchema } from "./audit-schema";
-import type { AuditEvent, AuditOutcomeFilter } from "./audit-schema";
+import { AUDIT_SEARCH_MAX_LENGTH, auditOutcomeFilterSchema } from "./audit-schema";
+import type { AuditOutcomeFilter } from "./audit-schema";
 
 export type AuditFilters = {
   query: string;
@@ -8,9 +7,12 @@ export type AuditFilters = {
 };
 
 export function parseAuditSearchParams(searchParams: URLSearchParams): AuditFilters {
-  const query = z.string().nullable().transform((value) => value ?? "").parse(searchParams.get("q"));
+  const query = searchParams.get("q") ?? "";
 
-  return { query, outcome: parseOutcomeFilter(searchParams.get("outcome")) };
+  return {
+    query: Array.from(query).length <= AUDIT_SEARCH_MAX_LENGTH ? query : "",
+    outcome: parseOutcomeFilter(searchParams.get("outcome")),
+  };
 }
 
 export function parseOutcomeFilter(value: string | null): AuditOutcomeFilter {
@@ -18,12 +20,13 @@ export function parseOutcomeFilter(value: string | null): AuditOutcomeFilter {
   return parsed.success ? parsed.data : "all";
 }
 
-export function matchesAuditFilters(event: AuditEvent, query: string, outcome: AuditOutcomeFilter): boolean {
-  if (outcome !== "all" && event.outcome !== outcome) return false;
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-  return [event.username, event.action, event.target, event.sourceIp, JSON.stringify(event.details ?? {})]
-    .join(" ")
-    .toLowerCase()
-    .includes(normalized);
+export function auditFilterSearchParams(filters: AuditFilters): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  if (filters.query) searchParams.set("q", filters.query);
+  searchParams.set("outcome", filters.outcome);
+  return searchParams;
+}
+
+export function hasAuditFilters(filters: AuditFilters): boolean {
+  return filters.query.trim() !== "" || filters.outcome !== "all";
 }
