@@ -208,7 +208,7 @@ Depends on P2-01. `auth.Authorize` moves from prototype to the only authorizatio
 
 Shipped in `backend/internal/httpapi/server.go`. `require` and the server action both resolve their decision through one `authorize` helper, which reads the grant and the lifecycle state from `store.ServerAccess` on every request and writes both the `404` and the `403`. A server ID that names no row denies before `Authorize` runs, because the fleet owner's implicit grant would otherwise cover an invented one. `auth.Allows` is deleted. The console socket re-reads the session and the grant every thirty seconds, so a disabled account, a revoked session, and a removed grant all end the stream. Per-server audit is the one row of the D2-01 table this ticket left alone: `audit_events` has no `server_id` until P2-05, so `/api/v1/fleet/audit` ships and the server-scoped reader ships with the column that can scope it. The dashboard reads its server ID from the session response until P2-06 makes it a route parameter.
 
-### P2-03: manage grants and fleet ownership
+### P2-03: manage grants and fleet ownership (complete)
 
 Depends on P2-02. A fleet owner assigns per-server roles, and a server administrator manages grants on the server it holds.
 
@@ -218,6 +218,10 @@ Depends on P2-02. A fleet owner assigns per-server roles, and a server administr
 - Revoking a grant is audited with both the subject and the granting principal.
 
 **Done when.** A grant removed while its holder is browsing takes effect on that holder's next request with no restart, and an installation can never reach zero fleet owners.
+
+Shipped in `backend/internal/store/store.go` and `backend/internal/httpapi/server.go`. `GET /api/v1/servers` filters rows by the current user's grants and returns every non-deleted row to a fleet owner. Server administrators and fleet owners list, create, replace, and revoke assignments under `/api/v1/servers/{serverId}/grants`. Each authorization check reads the grant again, so the subject's next request loses access after revocation.
+
+Fleet ownership changes use `/api/v1/fleet/users/{id}/fleet-owner`. Migration 4 records `authenticated_at` on each session, and `/api/v1/auth/reauthenticate` refreshes only the current session after a password check. Ownership changes require that check within ten minutes. Store transactions refuse both disabling and demoting the final active fleet owner. Creating an administrator grant no longer creates a fleet owner.
 
 ### P2-04: separate the remaining principals
 
@@ -230,6 +234,8 @@ Depends on P2-02. API tokens and the reauthentication window from D2-03.
 - `oidc_identities` and MFA tables are designed but not created, because an empty reserved table is scaffolding.
 
 **Done when.** Disabling a user stops every token they issued on the next request, and an expired or revoked token is indistinguishable from an unknown one.
+
+P2-03 shipped `sessions.authenticated_at`, the password-confirmation endpoint, and the fleet-owner guard because ownership changes need them. This ticket still owns API tokens and applies the same window to the remaining sensitive actions.
 
 ### P2-05: make audit attributable before fleet work writes to it (complete)
 

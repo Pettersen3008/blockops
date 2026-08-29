@@ -53,6 +53,103 @@ func TestInitialUserSessionAndAuditLifecycle(t *testing.T) {
 	}
 }
 
+func TestGivenTheOnlyFleetOwnerWhenDisablingOrDemotingThenRefuses(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	owner := User{ID: "owner", Username: "owner", PasswordHash: "hash", Role: "administrator", FleetOwner: true, CreatedAt: time.Now().UTC()}
+	if err := database.CreateInitialUser(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := database.SetFleetOwner(ctx, owner.ID, false); !errors.Is(err, ErrLastFleetOwner) {
+		t.Fatalf("SetFleetOwner() error = %v", err)
+	}
+	if err := database.DisableUser(ctx, owner.ID); !errors.Is(err, ErrLastFleetOwner) {
+		t.Fatalf("DisableUser() error = %v", err)
+	}
+	stored, err := database.UserByID(ctx, owner.ID)
+	if err != nil || !stored.FleetOwner || stored.Disabled {
+		t.Fatalf("owner after refused changes = %+v, %v", stored, err)
+	}
+}
+
+func TestGivenAServerGrantWhenRevokedThenTheNextAccessReadLosesIt(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	user := User{ID: "operator", Username: "operator", PasswordHash: "hash", Role: "operator", CreatedAt: time.Now().UTC()}
+	if err := database.CreateInitialUser(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.db.ExecContext(ctx, `UPDATE servers SET state='failed' WHERE id=?`, database.AdoptedServerID()); err != nil {
+		t.Fatal(err)
+	}
+	servers, err := database.ListServers(ctx, user.ID, false)
+	if err != nil || len(servers) != 1 || servers[0].State != "failed" {
+		t.Fatalf("assigned failed servers = %+v, %v", servers, err)
+	}
+
+	if err := database.RevokeServerGrant(ctx, database.AdoptedServerID(), user.ID); err != nil {
+		t.Fatal(err)
+	}
+	access, err := database.ServerAccess(ctx, database.AdoptedServerID(), user.ID)
+	if err != nil || access.Role != "" {
+		t.Fatalf("ServerAccess() = %+v, %v", access, err)
+	}
+	servers, err = database.ListServers(ctx, user.ID, false)
+	if err != nil || len(servers) != 0 {
+		t.Fatalf("unassigned servers = %+v, %v", servers, err)
+	}
+	servers, err = database.ListServers(ctx, user.ID, true)
+	if err != nil || len(servers) != 1 || servers[0].State != "failed" {
+		t.Fatalf("fleet owner servers = %+v, %v", servers, err)
+	}
+}
+
+func TestGivenASessionWhenReauthenticatedThenOnlyThatSessionGetsTheNewTime(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	user := User{ID: "owner", Username: "owner", PasswordHash: "hash", Role: "administrator", FleetOwner: true, CreatedAt: time.Now().UTC()}
+	if err := database.CreateInitialUser(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	created := time.Now().UTC().Add(-time.Hour)
+	for _, token := range []string{"first", "second"} {
+		if err := database.CreateSession(ctx, Session{IDHash: TokenHash(token), CSRFToken: token, CreatedAt: created, AuthenticatedAt: created, ExpiresAt: created.Add(2 * time.Hour)}, user.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	if err := database.ReauthenticateSession(ctx, "first", now); err != nil {
+		t.Fatal(err)
+	}
+	first, err := database.SessionByToken(ctx, "first", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := database.SessionByToken(ctx, "second", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.AuthenticatedAt.Equal(now) || !second.AuthenticatedAt.Equal(created) {
+		t.Fatalf("authenticated times = first %v, second %v", first.AuthenticatedAt, second.AuthenticatedAt)
+	}
+}
+
 func TestListAuditGivenTiedTimestampsAndFiltersWhenPagingThenTraversesWithoutDuplicates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

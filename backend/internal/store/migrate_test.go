@@ -23,7 +23,7 @@ func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsTheFleetSchemaWith
 	defer database.Close()
 
 	version, err := database.SchemaVersion(ctx)
-	if err != nil || version != 3 {
+	if err != nil || version != 4 {
 		t.Fatalf("SchemaVersion() = %d, %v", version, err)
 	}
 	user, err := database.UserByUsername(ctx, "admin")
@@ -35,7 +35,7 @@ func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsTheFleetSchemaWith
 		t.Fatalf("UserByUsername(watcher) = %+v, %v", viewer, err)
 	}
 	session, err := database.SessionByToken(ctx, "legacy-token", time.Now().UTC())
-	if err != nil || session.User.ID != "user-1" {
+	if err != nil || session.User.ID != "user-1" || !session.AuthenticatedAt.Equal(session.CreatedAt) {
 		t.Fatalf("SessionByToken() = %+v, %v", session, err)
 	}
 	page, err := database.ListAudit(ctx, AuditQuery{Limit: 10})

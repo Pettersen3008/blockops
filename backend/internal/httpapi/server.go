@@ -30,6 +30,8 @@ import (
 
 const sessionCookie = "blockops_session"
 
+const reauthenticationWindow = 10 * time.Minute
+
 // A console socket re-reads its grant on this interval, so revocation closes the
 // stream instead of surviving until the browser reconnects. A variable because
 // the revocation test cannot wait half a minute.
@@ -85,8 +87,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", s.login)
 	mux.Handle("GET /api/v1/auth/session", s.authenticated(http.HandlerFunc(s.session)))
 	mux.Handle("POST /api/v1/auth/logout", s.authenticated(http.HandlerFunc(s.logout)))
+	mux.Handle("POST /api/v1/auth/reauthenticate", s.authenticated(http.HandlerFunc(s.reauthenticate)))
 	// Every server route carries the ID the evaluator needs in one place, so no
 	// handler reconciles a path against a body. Fleet routes carry no server.
+	mux.Handle("GET /api/v1/servers", s.authenticated(http.HandlerFunc(s.servers)))
 	mux.Handle("GET /api/v1/servers/{serverId}/overview", s.require("monitor.read", http.HandlerFunc(s.overview)))
 	mux.Handle("GET /api/v1/servers/{serverId}/console/history", s.require("console.read", http.HandlerFunc(s.consoleHistory)))
 	mux.Handle("GET /api/v1/servers/{serverId}/console/ws", s.require("console.read", http.HandlerFunc(s.consoleWebSocket)))
@@ -105,12 +109,16 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/servers/{serverId}/audit/export", s.require("audit.read", http.HandlerFunc(s.auditExport)))
 	mux.Handle("GET /api/v1/servers/{serverId}/settings", s.require("settings.manage", http.HandlerFunc(s.settings)))
 	mux.Handle("PUT /api/v1/servers/{serverId}/settings/rcon", s.require("settings.manage", http.HandlerFunc(s.updateRCON)))
+	mux.Handle("GET /api/v1/servers/{serverId}/grants", s.require("grants.manage", http.HandlerFunc(s.serverGrants)))
+	mux.Handle("PUT /api/v1/servers/{serverId}/grants/{userId}", s.require("grants.manage", http.HandlerFunc(s.setServerGrant)))
+	mux.Handle("DELETE /api/v1/servers/{serverId}/grants/{userId}", s.require("grants.manage", http.HandlerFunc(s.revokeServerGrant)))
 	mux.Handle("GET /api/v1/fleet/audit", s.require("fleet.audit.read", http.HandlerFunc(s.auditLog)))
 	mux.Handle("GET /api/v1/fleet/audit/export", s.require("fleet.audit.read", http.HandlerFunc(s.auditExport)))
 	mux.Handle("GET /api/v1/fleet/users", s.require("fleet.users.manage", http.HandlerFunc(s.users)))
 	mux.Handle("POST /api/v1/fleet/users", s.require("fleet.users.manage", http.HandlerFunc(s.createUser)))
 	mux.Handle("DELETE /api/v1/fleet/users/{id}", s.require("fleet.users.manage", http.HandlerFunc(s.disableUser)))
 	mux.Handle("POST /api/v1/fleet/users/{id}/revoke-sessions", s.require("fleet.users.manage", http.HandlerFunc(s.revokeUserSessions)))
+	mux.Handle("PUT /api/v1/fleet/users/{id}/fleet-owner", s.require("fleet.users.manage", http.HandlerFunc(s.setFleetOwner)))
 	mux.Handle("/", webui.Handler())
 	return s.recoverMiddleware(s.securityHeaders(s.requestLog(mux)))
 }
@@ -252,6 +260,50 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	s.clearSessionCookie(w)
 	s.audit(r, "auth.logout", "dashboard", "success", nil, nil)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) reauthenticate(w http.ResponseWriter, r *http.Request) {
+	if !s.requireCSRF(w, r) {
+		return
+	}
+	var input struct {
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(w, r, 4<<10, &input); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	session := sessionFrom(r.Context())
+	key := "reauth:" + session.User.ID + ":" + s.sourceIP(r)
+	if allowed, retry := s.limiter.Allow(key, time.Now()); !allowed {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(retry.Seconds()))))
+		writeError(w, http.StatusTooManyRequests, "rate_limited", "Too many attempts. Try again later.")
+		return
+	}
+	if !auth.VerifyPassword(input.Password, session.User.PasswordHash) {
+		s.audit(r, "auth.reauthenticate", "session", "failure", nil, nil)
+		writeError(w, http.StatusUnauthorized, "invalid_credentials", "Password is incorrect.")
+		return
+	}
+	now := time.Now().UTC()
+	token, _ := r.Context().Value(tokenKey).(string)
+	if err := s.store.ReauthenticateSession(r.Context(), token, now); err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	s.limiter.Reset(key)
+	s.audit(r, "auth.reauthenticate", "session", "success", nil, nil)
+	writeJSON(w, http.StatusOK, map[string]time.Time{"authenticatedAt": now})
+}
+
+func (s *Server) servers(w http.ResponseWriter, r *http.Request) {
+	user := sessionFrom(r.Context()).User
+	servers, err := s.store.ListServers(r.Context(), user.ID, user.FleetOwner)
+	if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"servers": servers})
 }
 
 func (s *Server) overview(w http.ResponseWriter, r *http.Request) {
@@ -547,6 +599,70 @@ func (s *Server) users(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"users": users})
 }
 
+func (s *Server) serverGrants(w http.ResponseWriter, r *http.Request) {
+	grants, err := s.store.ListServerGrants(r.Context(), r.PathValue("serverId"))
+	if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"grants": grants})
+}
+
+func (s *Server) setServerGrant(w http.ResponseWriter, r *http.Request) {
+	if !s.requireCSRF(w, r) {
+		return
+	}
+	var input struct {
+		Role string `json:"role"`
+	}
+	if err := decodeJSON(w, r, 4<<10, &input); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	role, err := auth.ParseRole(input.Role)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_role", err.Error())
+		return
+	}
+	target, err := s.store.UserByID(r.Context(), r.PathValue("userId"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "user_not_found", "The user was not found.")
+		return
+	}
+	if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	if target.Disabled {
+		writeError(w, http.StatusConflict, "user_disabled", "A disabled user cannot receive a grant.")
+		return
+	}
+	actor := sessionFrom(r.Context()).User
+	now := time.Now().UTC()
+	if err := s.store.SetServerGrant(r.Context(), r.PathValue("serverId"), target.ID, string(role), actor.ID, now); err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	s.audit(r, "server.grant.set", target.ID, "success", map[string]any{"username": target.Username, "role": role}, nil)
+	writeJSON(w, http.StatusOK, store.ServerGrant{UserID: target.ID, Username: target.Username, Role: string(role), GrantedBy: actor.ID, GrantedAt: now})
+}
+
+func (s *Server) revokeServerGrant(w http.ResponseWriter, r *http.Request) {
+	if !s.requireCSRF(w, r) {
+		return
+	}
+	targetID := r.PathValue("userId")
+	if err := s.store.RevokeServerGrant(r.Context(), r.PathValue("serverId"), targetID); errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "grant_not_found", "The grant was not found.")
+		return
+	} else if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	s.audit(r, "server.grant.revoke", targetID, "success", nil, nil)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 	if !s.requireCSRF(w, r) {
 		return
@@ -583,7 +699,7 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, r, err)
 		return
 	}
-	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(role), FleetOwner: role == auth.Administrator, CreatedAt: time.Now().UTC()}
+	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(role), CreatedAt: time.Now().UTC()}
 	if err := s.store.CreateUser(r.Context(), user, sessionFrom(r.Context()).User.ID); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
 			writeError(w, http.StatusConflict, "username_exists", "That username already exists.")
@@ -611,23 +727,56 @@ func (s *Server) disableUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "user_not_found", "The user was not found.")
 		return
 	}
-	if target.FleetOwner {
-		count, err := s.store.ActiveFleetOwnerCount(r.Context())
-		if err != nil {
-			s.internalError(w, r, err)
-			return
-		}
-		if count <= 1 {
-			writeError(w, http.StatusConflict, "last_administrator", "The final administrator cannot be disabled.")
-			return
-		}
-	}
 	if err := s.store.DisableUser(r.Context(), targetID); err != nil {
+		if errors.Is(err, store.ErrLastFleetOwner) {
+			writeError(w, http.StatusConflict, "last_fleet_owner", "The final fleet owner cannot be disabled.")
+			return
+		}
 		s.internalError(w, r, err)
 		return
 	}
 	s.audit(r, "user.disable", targetID, "success", map[string]any{"username": target.Username}, nil)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) setFleetOwner(w http.ResponseWriter, r *http.Request) {
+	if !s.requireCSRF(w, r) || !s.requireRecentAuthentication(w, r) {
+		return
+	}
+	var input struct {
+		FleetOwner *bool `json:"fleetOwner"`
+	}
+	if err := decodeJSON(w, r, 4<<10, &input); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	if input.FleetOwner == nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "fleetOwner is required.")
+		return
+	}
+	target, err := s.store.UserByID(r.Context(), r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "user_not_found", "The user was not found.")
+		return
+	}
+	if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	if target.Disabled && *input.FleetOwner {
+		writeError(w, http.StatusConflict, "user_disabled", "A disabled user cannot become a fleet owner.")
+		return
+	}
+	if err := s.store.SetFleetOwner(r.Context(), target.ID, *input.FleetOwner); errors.Is(err, store.ErrLastFleetOwner) {
+		writeError(w, http.StatusConflict, "last_fleet_owner", "The final fleet owner cannot be removed.")
+		return
+	} else if err != nil {
+		s.internalError(w, r, err)
+		return
+	}
+	target.FleetOwner = *input.FleetOwner
+	s.audit(r, "fleet.owner.set", target.ID, "success", map[string]any{"username": target.Username, "fleetOwner": target.FleetOwner}, nil)
+	writeJSON(w, http.StatusOK, target)
 }
 
 func (s *Server) revokeUserSessions(w http.ResponseWriter, r *http.Request) {
@@ -761,6 +910,14 @@ func (s *Server) requireCSRF(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+func (s *Server) requireRecentAuthentication(w http.ResponseWriter, r *http.Request) bool {
+	if time.Since(sessionFrom(r.Context()).AuthenticatedAt) <= reauthenticationWindow {
+		return true
+	}
+	writeError(w, http.StatusForbidden, "reauthentication_required", "Confirm your password before this action.")
+	return false
 }
 
 func (s *Server) validCSRF(r *http.Request) bool {

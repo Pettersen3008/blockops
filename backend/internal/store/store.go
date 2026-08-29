@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("not found")
-	ErrAlreadyExists = errors.New("already exists")
+	ErrNotFound       = errors.New("not found")
+	ErrAlreadyExists  = errors.New("already exists")
+	ErrLastFleetOwner = errors.New("cannot remove the final active fleet owner")
 )
 
 type Store struct {
@@ -48,11 +49,12 @@ type User struct {
 }
 
 type Session struct {
-	IDHash    []byte
-	CSRFToken string
-	User      User
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	IDHash          []byte
+	CSRFToken       string
+	User            User
+	CreatedAt       time.Time
+	AuthenticatedAt time.Time
+	ExpiresAt       time.Time
 }
 
 type AuditEvent struct {
@@ -167,6 +169,21 @@ type ServerAccess struct {
 	Role  string
 }
 
+type Server struct {
+	ID    string `json:"id"`
+	Slug  string `json:"slug"`
+	Name  string `json:"name"`
+	State string `json:"state"`
+}
+
+type ServerGrant struct {
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	GrantedBy string    `json:"grantedBy"`
+	GrantedAt time.Time `json:"grantedAt"`
+}
+
 // ServerAccess reads the whole authorization input for one request. It runs on
 // every authorized route with no cache in front of it, so revoking a grant lands
 // on the principal's next request.
@@ -182,6 +199,70 @@ func (s *Store) ServerAccess(ctx context.Context, serverID, userID string) (Serv
 		return ServerAccess{}, fmt.Errorf("read server access: %w", err)
 	}
 	return access, nil
+}
+
+func (s *Store) ListServers(ctx context.Context, userID string, fleetOwner bool) ([]Server, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT s.id,s.slug,s.name,s.state
+	  FROM servers s LEFT JOIN server_grants g ON g.server_id=s.id AND g.user_id=?
+	  WHERE s.deleted_at IS NULL AND (? OR g.user_id IS NOT NULL)
+	  ORDER BY s.name COLLATE NOCASE`, userID, fleetOwner)
+	if err != nil {
+		return nil, fmt.Errorf("list servers: %w", err)
+	}
+	defer rows.Close()
+	servers := make([]Server, 0)
+	for rows.Next() {
+		var server Server
+		if err := rows.Scan(&server.ID, &server.Slug, &server.Name, &server.State); err != nil {
+			return nil, fmt.Errorf("scan server: %w", err)
+		}
+		servers = append(servers, server)
+	}
+	return servers, rows.Err()
+}
+
+func (s *Store) ListServerGrants(ctx context.Context, serverID string) ([]ServerGrant, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT g.user_id,u.username,g.role,g.granted_by,g.granted_at
+	  FROM server_grants g JOIN users u ON u.id=g.user_id
+	  WHERE g.server_id=? ORDER BY u.username COLLATE NOCASE`, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("list server grants: %w", err)
+	}
+	defer rows.Close()
+	grants := make([]ServerGrant, 0)
+	for rows.Next() {
+		var grant ServerGrant
+		var grantedAt string
+		if err := rows.Scan(&grant.UserID, &grant.Username, &grant.Role, &grant.GrantedBy, &grantedAt); err != nil {
+			return nil, fmt.Errorf("scan server grant: %w", err)
+		}
+		grant.GrantedAt = parseTime(grantedAt)
+		grants = append(grants, grant)
+	}
+	return grants, rows.Err()
+}
+
+func (s *Store) SetServerGrant(ctx context.Context, serverID, userID, role, grantedBy string, grantedAt time.Time) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO server_grants(user_id,server_id,role,granted_by,granted_at)
+	  VALUES(?,?,?,?,?) ON CONFLICT(user_id,server_id) DO UPDATE SET
+	  role=excluded.role,granted_by=excluded.granted_by,granted_at=excluded.granted_at`,
+		userID, serverID, role, grantedBy, formatTime(grantedAt))
+	if err != nil {
+		return classifyConflict("set server grant", err)
+	}
+	return nil
+}
+
+func (s *Store) RevokeServerGrant(ctx context.Context, serverID, userID string) error {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM server_grants WHERE server_id=? AND user_id=?`, serverID, userID)
+	if err != nil {
+		return fmt.Errorf("revoke server grant: %w", err)
+	}
+	count, _ := result.RowsAffected()
+	if count == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func NewID() (string, error) {
@@ -305,30 +386,80 @@ func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
 	return users, rows.Err()
 }
 
-// ActiveFleetOwnerCount guards the last account that can administer the
-// installation. Disabling it would leave nobody able to restore access.
-func (s *Store) ActiveFleetOwnerCount(ctx context.Context) (int, error) {
-	var count int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE fleet_owner=1 AND disabled=0`).Scan(&count); err != nil {
-		return 0, fmt.Errorf("count fleet owners: %w", err)
+func (s *Store) SetFleetOwner(ctx context.Context, id string, fleetOwner bool) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin fleet owner transaction: %w", err)
 	}
-	return count, nil
+	defer tx.Rollback()
+	var current, disabled bool
+	if err := tx.QueryRowContext(ctx, `SELECT fleet_owner,disabled FROM users WHERE id=?`, id).Scan(&current, &disabled); errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return fmt.Errorf("read fleet owner: %w", err)
+	}
+	if fleetOwner && disabled {
+		return ErrNotFound
+	}
+	if current && !fleetOwner && !disabled {
+		var count int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE fleet_owner=1 AND disabled=0`).Scan(&count); err != nil {
+			return fmt.Errorf("count fleet owners: %w", err)
+		}
+		if count <= 1 {
+			return ErrLastFleetOwner
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET fleet_owner=? WHERE id=?`, fleetOwner, id); err != nil {
+		return fmt.Errorf("set fleet owner: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit fleet owner: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) DisableUser(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET disabled = 1 WHERE id = ?`, id)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("begin disable user transaction: %w", err)
+	}
+	defer tx.Rollback()
+	var fleetOwner, disabled bool
+	if err := tx.QueryRowContext(ctx, `SELECT fleet_owner,disabled FROM users WHERE id=?`, id).Scan(&fleetOwner, &disabled); errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return fmt.Errorf("read user for disable: %w", err)
+	}
+	if disabled {
+		return nil
+	}
+	if fleetOwner {
+		var count int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE fleet_owner=1 AND disabled=0`).Scan(&count); err != nil {
+			return fmt.Errorf("count fleet owners: %w", err)
+		}
+		if count <= 1 {
+			return ErrLastFleetOwner
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET disabled=1 WHERE id=?`, id); err != nil {
 		return fmt.Errorf("disable user: %w", err)
 	}
-	count, _ := result.RowsAffected()
-	if count == 0 {
-		return ErrNotFound
+	if _, err := tx.ExecContext(ctx, `UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL`, formatTime(time.Now().UTC()), id); err != nil {
+		return fmt.Errorf("revoke disabled user sessions: %w", err)
 	}
-	return s.RevokeUserSessions(ctx, id)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit disable user: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) CreateSession(ctx context.Context, session Session, userID string) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions(id_hash,csrf_token,user_id,created_at,expires_at) VALUES(?,?,?,?,?)`, session.IDHash, session.CSRFToken, userID, formatTime(session.CreatedAt), formatTime(session.ExpiresAt))
+	if session.AuthenticatedAt.IsZero() {
+		session.AuthenticatedAt = session.CreatedAt
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions(id_hash,csrf_token,user_id,created_at,authenticated_at,expires_at) VALUES(?,?,?,?,?,?)`, session.IDHash, session.CSRFToken, userID, formatTime(session.CreatedAt), formatTime(session.AuthenticatedAt), formatTime(session.ExpiresAt))
 	if err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
@@ -337,25 +468,39 @@ func (s *Store) CreateSession(ctx context.Context, session Session, userID strin
 
 func (s *Store) SessionByToken(ctx context.Context, token string, now time.Time) (Session, error) {
 	row := s.db.QueryRowContext(ctx, `
-SELECT s.id_hash,s.csrf_token,s.created_at,s.expires_at,u.id,u.username,u.password_hash,COALESCE(g.role,''),u.fleet_owner,u.disabled,u.created_at
+SELECT s.id_hash,s.csrf_token,s.created_at,s.authenticated_at,s.expires_at,u.id,u.username,u.password_hash,COALESCE(g.role,''),u.fleet_owner,u.disabled,u.created_at
 FROM sessions s JOIN users u ON u.id=s.user_id
 LEFT JOIN server_grants g ON g.user_id=u.id AND g.server_id=?
 WHERE s.id_hash=? AND s.revoked_at IS NULL AND s.expires_at>? AND u.disabled=0`, s.serverID, TokenHash(token), formatTime(now))
 	var session Session
-	var sessionCreated, expires, userCreated string
+	var sessionCreated, authenticatedAt, expires, userCreated string
 	var disabled, fleetOwner int
-	if err := row.Scan(&session.IDHash, &session.CSRFToken, &sessionCreated, &expires, &session.User.ID, &session.User.Username, &session.User.PasswordHash, &session.User.Role, &fleetOwner, &disabled, &userCreated); err != nil {
+	if err := row.Scan(&session.IDHash, &session.CSRFToken, &sessionCreated, &authenticatedAt, &expires, &session.User.ID, &session.User.Username, &session.User.PasswordHash, &session.User.Role, &fleetOwner, &disabled, &userCreated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Session{}, ErrNotFound
 		}
 		return Session{}, fmt.Errorf("get session: %w", err)
 	}
 	session.CreatedAt = parseTime(sessionCreated)
+	session.AuthenticatedAt = parseTime(authenticatedAt)
 	session.ExpiresAt = parseTime(expires)
 	session.User.FleetOwner = fleetOwner != 0
 	session.User.Disabled = disabled != 0
 	session.User.CreatedAt = parseTime(userCreated)
 	return session, nil
+}
+
+func (s *Store) ReauthenticateSession(ctx context.Context, token string, now time.Time) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE sessions SET authenticated_at=?
+	  WHERE id_hash=? AND revoked_at IS NULL AND expires_at>?`, formatTime(now), TokenHash(token), formatTime(now))
+	if err != nil {
+		return fmt.Errorf("reauthenticate session: %w", err)
+	}
+	count, _ := result.RowsAffected()
+	if count == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) RevokeSession(ctx context.Context, token string, now time.Time) error {

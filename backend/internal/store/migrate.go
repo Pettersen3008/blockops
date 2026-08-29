@@ -161,10 +161,31 @@ BEGIN
   SELECT RAISE(ABORT, 'audit_events is append-only');
 END;`
 
+// Version 4 records the last password authentication on each browser session.
+// Existing sessions inherit their login time, so an upgrade neither grants a
+// fresh ten-minute window nor signs everyone out.
+const schemaVersion4 = `
+CREATE TABLE sessions_new (
+  id_hash BLOB PRIMARY KEY,
+  csrf_token TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  authenticated_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+INSERT INTO sessions_new(id_hash,csrf_token,user_id,created_at,authenticated_at,expires_at,revoked_at)
+SELECT id_hash,csrf_token,user_id,created_at,created_at,expires_at,revoked_at FROM sessions;
+DROP TABLE sessions;
+ALTER TABLE sessions_new RENAME TO sessions;
+CREATE INDEX idx_sessions_user ON sessions(user_id);
+CREATE INDEX idx_sessions_expiry ON sessions(expires_at);`
+
 var migrations = []migration{
 	{version: 1, statements: schemaVersion1},
 	{version: 2, statements: schemaVersion2, adopt: adoptConfiguredServer},
 	{version: 3, statements: schemaVersion3},
+	{version: 4, statements: schemaVersion4},
 }
 
 // adoptConfiguredServer turns the environment's single server into stored server

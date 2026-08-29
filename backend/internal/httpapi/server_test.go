@@ -210,6 +210,138 @@ func TestGivenRevokedAccessWhenConsoleSocketIsOpenThenCloses(t *testing.T) {
 	}
 }
 
+func TestGivenManagedGrantWhenRevokedThenSubjectLosesServerImmediately(t *testing.T) {
+	ctx := context.Background()
+	database := openTestStore(t, ctx)
+	defer database.Close()
+	server, err := New(config.Config{SessionTTL: time.Hour}, database, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := server.Handler()
+	ownerCookie := signIn(t, database, "owner", true)
+	managerCookie := signIn(t, database, "manager", false)
+	subjectCookie := signIn(t, database, "subject", false)
+	managerID := userID(t, database, "manager")
+	subjectID := userID(t, database, "subject")
+	managerGrantURL := "/api/v1/servers/" + database.AdoptedServerID() + "/grants/" + managerID
+	grantURL := "/api/v1/servers/" + database.AdoptedServerID() + "/grants/" + subjectID
+
+	setRequest := httptest.NewRequest(http.MethodPut, managerGrantURL, strings.NewReader(`{"role":"administrator"}`))
+	setRequest.AddCookie(ownerCookie)
+	setRequest.Header.Set("X-CSRF-Token", "owner-csrf")
+	setResponse := httptest.NewRecorder()
+	handler.ServeHTTP(setResponse, setRequest)
+	if setResponse.Code != http.StatusOK {
+		t.Fatalf("set manager grant status = %d, body = %s", setResponse.Code, setResponse.Body.String())
+	}
+
+	setRequest = httptest.NewRequest(http.MethodPut, grantURL, strings.NewReader(`{"role":"operator"}`))
+	setRequest.AddCookie(managerCookie)
+	setRequest.Header.Set("X-CSRF-Token", "manager-csrf")
+	setResponse = httptest.NewRecorder()
+	handler.ServeHTTP(setResponse, setRequest)
+	if setResponse.Code != http.StatusOK {
+		t.Fatalf("server administrator set grant status = %d, body = %s", setResponse.Code, setResponse.Body.String())
+	}
+
+	revokeRequest := httptest.NewRequest(http.MethodDelete, grantURL, nil)
+	revokeRequest.AddCookie(managerCookie)
+	revokeRequest.Header.Set("X-CSRF-Token", "manager-csrf")
+	revokeResponse := httptest.NewRecorder()
+	handler.ServeHTTP(revokeResponse, revokeRequest)
+	if revokeResponse.Code != http.StatusNoContent {
+		t.Fatalf("revoke grant status = %d, body = %s", revokeResponse.Code, revokeResponse.Body.String())
+	}
+
+	serversRequest := httptest.NewRequest(http.MethodGet, "/api/v1/servers", nil)
+	serversRequest.AddCookie(subjectCookie)
+	serversResponse := httptest.NewRecorder()
+	handler.ServeHTTP(serversResponse, serversRequest)
+	if serversResponse.Code != http.StatusOK || serversResponse.Body.String() != "{\"servers\":[]}\n" {
+		t.Fatalf("servers response = %d, %s", serversResponse.Code, serversResponse.Body.String())
+	}
+
+	backupsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/servers/"+database.AdoptedServerID()+"/backups", nil)
+	backupsRequest.AddCookie(subjectCookie)
+	backupsResponse := httptest.NewRecorder()
+	handler.ServeHTTP(backupsResponse, backupsRequest)
+	if backupsResponse.Code != http.StatusNotFound {
+		t.Fatalf("revoked access status = %d, body = %s", backupsResponse.Code, backupsResponse.Body.String())
+	}
+	page, err := database.ListAudit(ctx, store.AuditQuery{ServerID: database.AdoptedServerID(), Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range page.Events {
+		if event.Action == "server.grant.revoke" && event.Target == subjectID && event.PrincipalID == managerID {
+			return
+		}
+	}
+	t.Fatalf("grant revocation audit = %+v", page.Events)
+}
+
+func TestGivenStaleAuthenticationWhenTransferringFleetOwnershipThenRequiresPassword(t *testing.T) {
+	ctx := context.Background()
+	database := openTestStore(t, ctx)
+	defer database.Close()
+	password := "Strong transfer pass 42!"
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := store.User{ID: "owner", Username: "owner", PasswordHash: hash, Role: string(auth.Administrator), FleetOwner: true, CreatedAt: time.Now().UTC()}
+	if err := database.CreateInitialUser(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+	target := store.User{ID: "target", Username: "target", PasswordHash: "unused", Role: string(auth.Viewer), CreatedAt: time.Now().UTC()}
+	if err := database.CreateUser(ctx, target, owner.ID); err != nil {
+		t.Fatal(err)
+	}
+	created := time.Now().UTC().Add(-time.Hour)
+	if err := database.CreateSession(ctx, store.Session{IDHash: store.TokenHash("owner-token"), CSRFToken: "owner-csrf", CreatedAt: created, AuthenticatedAt: created, ExpiresAt: created.Add(2 * time.Hour)}, owner.ID); err != nil {
+		t.Fatal(err)
+	}
+	server, err := New(config.Config{SessionTTL: time.Hour}, database, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := server.Handler()
+	cookie := &http.Cookie{Name: sessionCookie, Value: "owner-token"}
+	ownerURL := "/api/v1/fleet/users/" + target.ID + "/fleet-owner"
+
+	staleRequest := httptest.NewRequest(http.MethodPut, ownerURL, strings.NewReader(`{"fleetOwner":true}`))
+	staleRequest.AddCookie(cookie)
+	staleRequest.Header.Set("X-CSRF-Token", "owner-csrf")
+	staleResponse := httptest.NewRecorder()
+	handler.ServeHTTP(staleResponse, staleRequest)
+	if staleResponse.Code != http.StatusForbidden {
+		t.Fatalf("stale ownership change status = %d, body = %s", staleResponse.Code, staleResponse.Body.String())
+	}
+
+	reauthRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/reauthenticate", strings.NewReader(`{"password":"`+password+`"}`))
+	reauthRequest.AddCookie(cookie)
+	reauthRequest.Header.Set("X-CSRF-Token", "owner-csrf")
+	reauthResponse := httptest.NewRecorder()
+	handler.ServeHTTP(reauthResponse, reauthRequest)
+	if reauthResponse.Code != http.StatusOK {
+		t.Fatalf("reauthentication status = %d, body = %s", reauthResponse.Code, reauthResponse.Body.String())
+	}
+
+	transferRequest := httptest.NewRequest(http.MethodPut, ownerURL, strings.NewReader(`{"fleetOwner":true}`))
+	transferRequest.AddCookie(cookie)
+	transferRequest.Header.Set("X-CSRF-Token", "owner-csrf")
+	transferResponse := httptest.NewRecorder()
+	handler.ServeHTTP(transferResponse, transferRequest)
+	if transferResponse.Code != http.StatusOK {
+		t.Fatalf("ownership transfer status = %d, body = %s", transferResponse.Code, transferResponse.Body.String())
+	}
+	stored, err := database.UserByID(ctx, target.ID)
+	if err != nil || !stored.FleetOwner {
+		t.Fatalf("target after transfer = %+v, %v", stored, err)
+	}
+}
+
 // signIn creates an account with a grant on the adopted server and a session
 // cookie for it.
 func signIn(t *testing.T, database *store.Store, username string, fleetOwner bool) *http.Cookie {

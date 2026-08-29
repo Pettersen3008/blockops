@@ -98,6 +98,51 @@ paths:
       responses:
         "204": { description: Session revoked and cookie cleared. }
         "403": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/reauthenticate:
+    post:
+      tags: [Authentication]
+      operationId: reauthenticate
+      description: Confirms the current user's password and refreshes the ten-minute sensitive-action window for this session only.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 256, writeOnly: true }
+      responses:
+        "200":
+          description: Password confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authenticatedAt]
+                properties:
+                  authenticatedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/servers:
+    get:
+      tags: [Administration]
+      operationId: servers
+      description: Returns only servers assigned to the current user. A fleet owner sees every non-deleted server.
+      responses:
+        "200":
+          description: Visible servers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [servers]
+                properties:
+                  servers: { type: array, items: { $ref: "#/components/schemas/Server" } }
+        "401": { $ref: "#/components/responses/Error" }
   /api/v1/servers/{serverId}/overview:
     parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
@@ -497,6 +542,32 @@ paths:
         - { $ref: "#/components/parameters/CSRF" }
       responses:
         "204": { description: Active sessions revoked. }
+  /api/v1/fleet/users/{id}/fleet-owner:
+    put:
+      tags: [Administration]
+      operationId: setFleetOwner
+      description: Adds or removes fleet ownership. Requires password confirmation within the last ten minutes and refuses to remove the final active fleet owner.
+      parameters:
+        - { $ref: "#/components/parameters/UserID" }
+        - { $ref: "#/components/parameters/CSRF" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fleetOwner]
+              properties:
+                fleetOwner: { type: boolean }
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/User" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /api/v1/servers/{serverId}/settings:
     parameters: [{ $ref: "#/components/parameters/ServerID" }]
     get:
@@ -527,6 +598,61 @@ paths:
         "200": { description: Encrypted credentials updated; password omitted. }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/grants:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: serverGrants
+      description: Lists assignments on one server. A server administrator or fleet owner can read them.
+      responses:
+        "200":
+          description: Server grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [grants]
+                properties:
+                  grants: { type: array, items: { $ref: "#/components/schemas/ServerGrant" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/grants/{userId}:
+    parameters:
+      - { $ref: "#/components/parameters/ServerID" }
+      - { $ref: "#/components/parameters/GrantUserID" }
+    put:
+      tags: [Administration]
+      operationId: setServerGrant
+      description: Creates or replaces one server assignment.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: Created or updated grant.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ServerGrant" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Administration]
+      operationId: revokeServerGrant
+      description: Revokes one server assignment. The next request and the next WebSocket authorization check see the change.
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Grant revoked. }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     cookieAuth:
@@ -552,6 +678,11 @@ components:
       schema: { type: string, pattern: "^[a-f0-9]{32}$" }
     UserID:
       name: id
+      in: path
+      required: true
+      schema: { type: string }
+    GrantUserID:
+      name: userId
       in: path
       required: true
       schema: { type: string }
@@ -589,6 +720,23 @@ components:
         fleetOwner: { type: boolean, description: Manages accounts, nodes, server creation, and installation settings. }
         disabled: { type: boolean }
         createdAt: { type: string, format: date-time }
+    Server:
+      type: object
+      required: [id, slug, name, state]
+      properties:
+        id: { type: string, pattern: "^[a-f0-9]{32}$" }
+        slug: { type: string }
+        name: { type: string }
+        state: { enum: [provisioning, active, suspended, deleting, failed] }
+    ServerGrant:
+      type: object
+      required: [userId, username, role, grantedBy, grantedAt]
+      properties:
+        userId: { type: string }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        grantedBy: { type: string }
+        grantedAt: { type: string, format: date-time }
     Session:
       type: object
       required: [user, csrfToken, expiresAt, serverId]
