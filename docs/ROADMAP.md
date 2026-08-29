@@ -2,7 +2,7 @@
 
 BlockOps grows from a secure single-server dashboard into a self-hosted Minecraft fleet manager, keeping the Go control plane, React interface, typed HTTP APIs, bounded WebSocket streams, and audit model.
 
-Phases follow dependencies and risk, not dates. A phase starts only after the previous one meets its exit criteria. Phase 1 has tickets. Phase 2 has unsettled decisions. Phases 3 through 7 are outcomes and constraints, not plans.
+Phases follow dependencies and risk, not dates. A phase starts only after the previous one meets its exit criteria. Phase 1 has tickets. Phase 2 has settled decisions and no tickets yet. Phases 3 through 7 are outcomes and constraints, not plans.
 
 [VoxelDash](https://github.com/gnmyt/VoxelDash) is product inspiration for provisioning, Modrinth integration, file management, schedules, and performance history. BlockOps implements those around explicit server roots, pinned runtime templates, resource-scoped permissions, and authenticated node agents.
 
@@ -155,6 +155,8 @@ The tag workflow reuses the backend, frontend, mocked browser, container, and sa
 **Outcome.** Users and nodes have explicit identities, and every operation is authorized against a specific server before multi-server provisioning exists.
 
 Phase 2 does not start with auth screens. It starts by fixing the contracts every later endpoint depends on. Write tickets only after all five decisions have reviewed schemas, a migration and rollback story for current installations, a threat model covering horizontal privilege escalation and confused-deputy requests, and one runnable negative authorization prototype using two users and two servers.
+
+D2-01 through D2-05 are decided in [`PHASE2.md`](PHASE2.md), which holds the schemas, the migration and rollback story, and the threat model. D2-02's mechanism ships with that document in `backend/internal/store/migrate.go`. The negative authorization prototype is `auth.Authorize` in `backend/internal/auth/scope.go` with its two-user, two-server test. Tickets are written once that document is reviewed.
 
 - **D2-01 Resource model.** Stable IDs and lifecycle states for servers and nodes. Whether `administrator` stays global or becomes global owner plus per-server grants. The permission evaluation input. The canonical route shape, expected to be `/api/v1/servers/{serverId}/...`. How the currently configured server becomes the first stored server without changing its Docker target, credentials, backups, or audit history.
 - **D2-02 Versioned migrations.** The store applies idempotent `CREATE TABLE IF NOT EXISTS` with no schema version. Decide a standard-library mechanism: ordered migrations run once in transactions and record their version, startup refuses a database newer than the binary, failure leaves the prior schema usable. Prove a copy of a current database migrates forward with users, sessions, audit, backups, and encrypted settings intact. No migration dependency unless an ordered SQL list becomes measurably inadequate.
