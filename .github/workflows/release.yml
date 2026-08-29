@@ -1,9 +1,10 @@
-name: Release image
+name: Release gate and image
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,8 +13,51 @@ concurrency:
   group: release-${{ github.ref }}
 
 jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  destructive:
+    runs-on: ubuntu-latest
+    needs: quality
+    timeout-minutes: 30
+    steps:
+      - name: Check out the release candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install Chromium
+        run: bun run playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Start the disposable real-server fixture
+        run: scripts/integration.sh up
+
+      - name: Run the destructive integration journey
+        env:
+          BLOCKOPS_E2E_COMPOSE_PROJECT: blockops-integration
+          BLOCKOPS_E2E_DESTRUCTIVE: "true"
+          BLOCKOPS_E2E_INTEGRATION: "true"
+          BLOCKOPS_E2E_URL: http://127.0.0.1:8099
+        run: bun run test:e2e
+        working-directory: frontend
+
+      - name: Remove the fixture and its volumes
+        if: always()
+        run: scripts/integration.sh down
+
   publish:
     runs-on: ubuntu-latest
+    needs: destructive
+    if: github.event_name == 'push'
     permissions:
       contents: write
       id-token: write
@@ -138,6 +182,8 @@ jobs:
 
           On macOS, replace the \`sha256sum\` command with \`shasum -a 256 --check SHA256SUMS\`.
           The release contains SPDX and SLSA provenance JSON for both supported platforms.
+          The release gate tested Paper 1.21.4 build 232 on Minecraft 1.21.4 on its Linux AMD64 runner.
+          It built and attested Linux AMD64 and ARM64 images, but did not run the real-server journeys on ARM64 or Docker Desktop.
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
 

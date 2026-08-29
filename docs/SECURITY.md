@@ -22,6 +22,7 @@ Security is part of the BlockOps release boundary. This document describes imple
 - CI renders the Compose model for both documented Minecraft data sources and asserts loopback-only ingress, unpublished guard and RCON ports, read-only roots, dropped capabilities, service-specific health checks, and a read-only socket mount on the guard alone (`scripts/compose-assert.sh`).
 - The integration fixture (`compose.integration.yaml`, `scripts/integration.sh`) runs the same assertions against its merged model, so a test stack never relaxes the production hardening. It uses its own Compose project, volumes, and RCON network name, so it cannot attach to a production server. Its RCON password and encryption key are generated per run into gitignored `runtime/integration.env`, deleted on teardown, and redacted out of the logs the script prints on failure.
 - The destructive browser lane refuses to load without its explicit opt-in and the exact `blockops-integration` project identity, then verifies the configured container name in the protected settings page before changing lifecycle or world state. Routine and pull-request commands do not select it.
+- A tag cannot reach the privileged image-publish job until the reusable CI workflow and a fresh destructive fixture pass. Manual release-gate runs execute the same checks without package, release, or identity write permissions. Manual runs never publish.
 
 ## Required production settings
 

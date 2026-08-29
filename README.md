@@ -1,6 +1,6 @@
 # BlockOps
 
-BlockOps is an open-source, single-server control plane for a Dockerized Paper/Spigot-compatible Minecraft Java server. It provides live monitoring, a Minecraft console, player administration, safe world operations, local backups, dashboard roles, and an audit log without exposing a browser shell.
+BlockOps is an open-source, single-server control plane for a Dockerized Minecraft Java server. The release gate tests Paper 1.21.4 build 232. It provides live monitoring, a Minecraft console, player administration, safe world operations, local backups, dashboard roles, and an audit log without exposing a browser shell.
 
 The current release is a strong single-server MVP. Missing integrations are shown as unavailable; the dashboard does not invent metrics or server state.
 
@@ -181,7 +181,7 @@ With the development servers running, execute the real-browser smoke journey wit
 
 `make integration-down` removes the project and its volumes, and touches nothing else. The Minecraft data volume, the RCON network, and the container name are all project-scoped, the dashboard publishes `127.0.0.1:8099`, and the game port publishes `127.0.0.1:25566`. Both ports are offset from the production defaults so the fixture cannot collide with a real server on the same host. Set `BLOCKOPS_PORT` or `BLOCKOPS_GAME_PORT` before `up` if either is taken.
 
-The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-architecture index digest and the Minecraft version is pinned, but a first boot resolves the Paper build from `api.papermc.io`, so Minecraft gets a plain egress network beside the internal RCON one. Nothing is published on it.
+The fixture pins Minecraft 1.21.4, Paper build 232, and the multi-architecture `itzg/minecraft-server` image index digest. A first boot still downloads that Paper build from `api.papermc.io`, so Minecraft gets a plain egress network beside the internal RCON one. Nothing is published on it.
 
 ### Safe integration journey
 
@@ -204,6 +204,7 @@ A focused backend regression test forces Docker to reject the replacement start 
 - [`frontend/`](frontend) — browser client.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — trust boundaries and runtime flow.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — controls, residual risks, and deployment checklist.
+- [`docs/RELEASE.md`](docs/RELEASE.md) — release gate, tested matrix, and evidence checklist.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phase plan, open decisions, and rejected features.
 - [`packages/ui`](packages/ui) — shared interface components.
 - [`AGENTS.md`](AGENTS.md) — verification commands and the rules a change must not break.

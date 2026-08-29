@@ -35,6 +35,7 @@ services:
       EULA: "TRUE"
       TYPE: PAPER
       VERSION: "1.21.4"
+      PAPER_BUILD: "232"
       MEMORY: 1G
       UID: "10001"
       GID: "10001"

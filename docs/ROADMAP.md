@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 through P1-06 are `complete`. P1-07 is `planned`.
+P1-01 through P1-07 are `complete`.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -137,7 +137,7 @@ Depends on P1-01. A tag produces one immutable multi-architecture image plus ver
 
 The tag-only release workflow accepts stable `vMAJOR.MINOR.PATCH` tags, publishes one `linux/amd64` and `linux/arm64` image index to GHCR, and addresses it by the exact version or digest. BuildKit attaches a per-platform SPDX SBOM and SLSA provenance. Cosign signs the image digest through GitHub Actions OIDC. The GitHub release records that digest, exports both attestations for each platform, checksums every evidence file, and includes copyable verification commands. Every action has an immutable commit SHA, and only the tag job receives package, release, and identity write permissions.
 
-### P1-07: make Phase 1 a release gate
+### P1-07: make Phase 1 a release gate (complete)
 
 Depends on P1-03, P1-04, P1-05, P1-06.
 
@@ -147,6 +147,8 @@ Depends on P1-03, P1-04, P1-05, P1-06.
 - Record the tested Minecraft and server-software versions. Do not claim compatibility outside that matrix. P1-03 exercised Paper `1.21.4-232` on Minecraft 1.21.4, resolved from the pinned `itzg/minecraft-server:java21` index digest.
 
 **Done when.** A release candidate has reproducible evidence for every Phase 1 exit criterion and lists anything not verified.
+
+The tag workflow reuses the backend, frontend, mocked browser, container, and safe real-server CI jobs. It then runs the destructive profile against a fresh fixture before the publish job receives write or OIDC permissions. The same workflow can run manually without publishing. The mocked production-browser lane checks the full security-header set. The fixture pins Paper 1.21.4 build 232 on Minecraft 1.21.4 and the recorded `itzg/minecraft-server` image index. [`RELEASE.md`](RELEASE.md) maps each release check to its evidence and names the unverified platforms and software.
 
 ## Phase 2: fleet identity and authorization
 
