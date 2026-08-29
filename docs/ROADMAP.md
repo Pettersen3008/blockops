@@ -53,7 +53,7 @@ flowchart LR
   P106 --> P107
 ```
 
-P1-01 through P1-03 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
+P1-01 through P1-04 are `complete`. Every other ticket is `planned`. P1-05 runs alongside the integration work.
 
 ### P1-01: make the Compose contract accurate (complete)
 
@@ -97,7 +97,7 @@ Depends on P1-02. A separate browser spec verifies available integrations. The e
 
 Two constraints the fixture settled. Nothing ever joins the fixture, so the real player catalog is legitimately empty and the journey asserts the parsed empty catalog rather than a player. Save consistency is observable without a second command: Paper writes `[Rcon: Automatic saving is now disabled]`, `[Rcon: Saved the game]`, and `[Rcon: Automatic saving is now enabled]` to `latest.log`, so the console proves the backup re-enabled saving.
 
-### P1-04: add an explicit destructive profile
+### P1-04: add an explicit destructive profile (complete)
 
 Depends on P1-03. Stop, restart, restore, and world replacement get real coverage outside the default test path.
 
@@ -107,6 +107,8 @@ Depends on P1-03. Stop, restart, restore, and world replacement get real coverag
 - Cover invalid archives and forced start failure while preserving rollback evidence.
 
 **Done when.** The profile passes twice from fresh disposable state, cancelling Playwright never strands Minecraft in `save-off`, and it stays absent from routine and pull-request commands.
+
+`frontend/e2e/destructive.spec.ts` runs only when the integration flag, destructive flag, and exact `blockops-integration` project identity agree. It also reads the protected deployment settings and refuses to act on any container except `blockops-integration-minecraft`. The journey uses a downloaded real `level.dat` to generate minimal replacement ZIPs, proves a backup restores its marker, and proves a traversal ZIP leaves that marker untouched. Focused Go tests force the replacement start to fail and assert the old world returns before the recovery start, then cancel an archive request and assert `save-on` uses a fresh context. The lane passed twice from newly created volumes in 3.0 and 2.9 minutes; the existing safe journey also passed after the destructive flow and confirmed the full `save-off` and `save-on` cycle.
 
 ### P1-05: paginate and export the audit log
 

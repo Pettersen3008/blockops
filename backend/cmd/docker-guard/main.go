@@ -87,7 +87,7 @@ func main() {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		mux.ServeHTTP(w, r)
 	})
-	server := &http.Server{Addr: ":2375", Handler: handler, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8 << 10}
+	server := &http.Server{Addr: ":2375", Handler: handler, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 50 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {

@@ -280,6 +280,7 @@ paths:
     post:
       tags: [Administration]
       operationId: serverAction
+      description: Runs one bounded Docker action against only the configured container. Stop and restart allow Docker its 30-second graceful-stop window.
       parameters: [{ $ref: "#/components/parameters/CSRF" }]
       requestBody:
         required: true
@@ -291,7 +292,7 @@ paths:
               properties:
                 action: { enum: [start, stop, restart] }
       responses:
-        "202": { description: Fixed-container action accepted. }
+        "202": { description: Fixed-container action completed successfully. }
         "403": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /api/v1/audit:

@@ -21,6 +21,7 @@ Security is part of the BlockOps release boundary. This document describes imple
 - Non-root dashboard image, dropped capabilities, read-only root filesystem, private internal networks, reproducible lockfiles, race tests, `govulncheck`, npm audit, and Dependabot in CI.
 - CI renders the Compose model for both documented Minecraft data sources and asserts loopback-only ingress, unpublished guard and RCON ports, read-only roots, dropped capabilities, service-specific health checks, and a read-only socket mount on the guard alone (`scripts/compose-assert.sh`).
 - The integration fixture (`compose.integration.yaml`, `scripts/integration.sh`) runs the same assertions against its merged model, so a test stack never relaxes the production hardening. It uses its own Compose project, volumes, and RCON network name, so it cannot attach to a production server. Its RCON password and encryption key are generated per run into gitignored `runtime/integration.env`, deleted on teardown, and redacted out of the logs the script prints on failure.
+- The destructive browser lane refuses to load without its explicit opt-in and the exact `blockops-integration` project identity, then verifies the configured container name in the protected settings page before changing lifecycle or world state. Routine and pull-request commands do not select it.
 
 ## Required production settings
 
@@ -48,4 +49,3 @@ Security is part of the BlockOps release boundary. This document describes imple
 ## Reporting a vulnerability
 
 Do not open a public issue containing exploit details, credentials, or private server data. Until a dedicated security mailbox exists, open a minimal private GitHub security advisory for the repository owner. Include the affected version, impact, reproduction conditions, and a non-destructive proof. Maintainers should acknowledge, reproduce, patch, and coordinate disclosure before publishing details.
-

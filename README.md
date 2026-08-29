@@ -156,9 +156,15 @@ The fixture is not hermetic. `itzg/minecraft-server` is pinned to a multi-archit
 
 With the fixture up, `make test-integration` drives the real dashboard in a browser: live server state, container image digest, resolved software and version, CPU, memory, disk, the player catalog, a connected console stream, the fixed safe command `list` with its audit event, and a consistent backup that is downloaded and verified to be a real gzip archive. It then asserts the console shows the full save-off, flush, save-on cycle, so a backup that strands the world in `save-off` fails the run.
 
-The two browser lanes never mix. `BLOCKOPS_E2E_INTEGRATION=true` selects the integration Playwright project and nothing else; without it only the mocked journey runs. The integration spec removes `page.route` and `page.routeWebSocket` from the page, so a handler added by mistake throws instead of quietly replacing real behavior with a fixture.
+The browser lanes never mix. `BLOCKOPS_E2E_INTEGRATION=true` selects the integration Playwright project and nothing else; without it only the mocked journey runs. The integration spec removes `page.route` and `page.routeWebSocket` from the page, so a handler added by mistake throws instead of quietly replacing real behavior with a fixture.
 
-Stopping, restarting, restoring, and world replacement are deliberately absent. They land in the separate destructive profile.
+### Destructive integration journey
+
+With a fresh fixture up, `make test-destructive` restarts, stops, and starts the configured container. It replaces the world with a generated safe ZIP, backs up a marker, changes it, restores the backup, and verifies the marker returned. It also submits a traversal ZIP and verifies the live world stayed unchanged.
+
+The destructive lane requires `BLOCKOPS_E2E_DESTRUCTIVE=true`, `BLOCKOPS_E2E_INTEGRATION=true`, and the exact Compose project identity `blockops-integration`. The browser also verifies the configured container is `blockops-integration-minecraft` before changing state. Routine and pull-request commands never select this lane.
+
+A focused backend regression test forces Docker to reject the replacement start and verifies BlockOps restores the prior world before its recovery start. The browser lane does not add a production fault-injection switch for that case.
 
 ## API and repository map
 

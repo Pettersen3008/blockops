@@ -161,7 +161,9 @@ func (c *Client) Action(ctx context.Context, action string) error {
 	if err != nil {
 		return err
 	}
-	response, err := c.httpClient.Do(request)
+	actionClient := *c.httpClient
+	actionClient.Timeout = max(actionClient.Timeout, 45*time.Second)
+	response, err := actionClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}

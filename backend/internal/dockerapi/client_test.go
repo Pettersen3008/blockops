@@ -4,8 +4,10 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestClientTargetsConfiguredContainer(t *testing.T) {
@@ -66,6 +68,24 @@ func TestClientRejectsUnsupportedAction(t *testing.T) {
 	}
 	if err := client.Action(context.Background(), "delete"); err == nil {
 		t.Fatal("expected unsupported action to fail")
+	}
+}
+
+func TestClientGivenASlowDockerActionWhenTheReadTimeoutExpiresThenTheActionCompletes(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(25 * time.Millisecond)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client, err := New(server.URL, "minecraft")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.httpClient.Timeout = 10 * time.Millisecond
+
+	if err := client.Action(context.Background(), "stop"); err != nil {
+		t.Fatal(err)
 	}
 }
 
