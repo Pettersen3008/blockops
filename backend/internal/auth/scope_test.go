@@ -33,6 +33,7 @@ func TestAuthorizeGivenTwoUsersAndTwoServersWhenTamperingThenDenies(t *testing.T
 		{"a misspelled permission", owner, Request{alpha, ServerActive, "console.exec"}, false, true},
 		{"writing to a server being deleted", owner, Request{alpha, ServerDeleting, "world.replace"}, false, true},
 		{"reading a server being deleted", owner, Request{alpha, ServerDeleting, "monitor.read"}, true, true},
+		{"restarting a server that failed to provision", owner, Request{alpha, ServerFailed, "server.restart"}, false, true},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

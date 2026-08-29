@@ -9,9 +9,11 @@ package auth
 type ServerState string
 
 const (
-	ServerActive    ServerState = "active"
-	ServerSuspended ServerState = "suspended"
-	ServerDeleting  ServerState = "deleting"
+	ServerProvisioning ServerState = "provisioning"
+	ServerActive       ServerState = "active"
+	ServerSuspended    ServerState = "suspended"
+	ServerDeleting     ServerState = "deleting"
+	ServerFailed       ServerState = "failed"
 )
 
 // Principal is any authenticated subject: a human's browser session, an API

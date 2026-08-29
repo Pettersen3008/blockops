@@ -239,8 +239,8 @@ Per-server audit reading uses the new index and the existing `(occurred_at DESC,
 | Browser permissions stay a usability mirror of backend policy | D2-01 route shape and server-side evaluation on every handler |
 | Recovery flows cannot bypass MFA or transfer ownership silently | D2-03 reauthentication window and its audited action list |
 
-## Open questions for the ticket round
+## Questions the ticket round settled
 
-- Whether a server slug may be reused after deletion. Leaning no, because audit history and backup filenames read better when a slug is permanent.
-- Whether fleet audit and per-server audit share one export limit or get separate ones.
-- Whether `provisioning` and `failed` servers appear to grant holders or only to the fleet owner.
+- **A slug is never reused.** Deletion keeps the row and its slug, so audit history and backup filenames stay resolvable and a new server cannot inherit a retired name's history. P2-01.
+- **Fleet and per-server audit share one export limit.** Both reach the same streaming path, and `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS` protects that path rather than either caller. P2-05.
+- **`provisioning` and `failed` servers are visible to their grant holders.** Reads already survive every non-active state, and hiding a server whose creation failed hides the only place to read why. P2-03.
