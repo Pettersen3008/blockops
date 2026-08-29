@@ -137,3 +137,65 @@ func TestOpenGivenLegacyExactSecondAuditTimeWhenMigratingThenNormalizesOrdering(
 		t.Fatalf("migrated timestamp = %q, %v", occurred, err)
 	}
 }
+
+func TestWriteAuditGivenAWrittenEventWhenUpdatingOrDeletingItThenTheTableRefuses(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if err := database.WriteAudit(ctx, AuditEvent{Action: "server.stop", Target: "minecraft", SourceIP: "127.0.0.1", Outcome: "success"}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, statement := range []string{`UPDATE audit_events SET outcome='success'`, `DELETE FROM audit_events`} {
+		if _, err := database.db.ExecContext(ctx, statement); err == nil {
+			t.Fatalf("%s succeeded against an append-only table", statement)
+		}
+	}
+}
+
+func TestListAuditGivenEventsOnTwoServersWhenTraversingOneThenReadsOnlyItsOwnHistory(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	exactSecond := time.Date(2026, time.August, 29, 12, 0, 0, 0, time.UTC)
+	// Tied timestamps across servers, plus a pre-migration row whose null server_id
+	// reads as fleet history and belongs to neither server.
+	events := []AuditEvent{
+		{ID: "00000000000000000000000000000004", ServerID: "server-a", OccurredAt: exactSecond, Action: "server.stop", Target: "a", SourceIP: "127.0.0.1", Outcome: "success"},
+		{ID: "00000000000000000000000000000003", ServerID: "server-b", OccurredAt: exactSecond, Action: "server.stop", Target: "b", SourceIP: "127.0.0.1", Outcome: "success"},
+		{ID: "00000000000000000000000000000002", ServerID: "server-a", OccurredAt: exactSecond, Action: "server.start", Target: "a", SourceIP: "127.0.0.1", Outcome: "success"},
+		{ID: "00000000000000000000000000000001", OccurredAt: exactSecond, Action: "auth.login", Target: "session", SourceIP: "127.0.0.1", Outcome: "success"},
+	}
+	for _, event := range events {
+		if err := database.WriteAudit(ctx, event); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	seen := []string{}
+	var cursor *AuditCursor
+	for {
+		page, err := database.ListAudit(ctx, AuditQuery{ServerID: "server-a", Before: cursor, Limit: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, event := range page.Events {
+			seen = append(seen, event.ID)
+		}
+		if page.Next == nil {
+			break
+		}
+		cursor = page.Next
+	}
+	if !slices.Equal(seen, []string{events[0].ID, events[2].ID}) {
+		t.Fatalf("server-a traversal = %v", seen)
+	}
+}

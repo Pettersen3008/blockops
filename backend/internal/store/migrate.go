@@ -138,9 +138,33 @@ CREATE TABLE server_grants (
 );
 CREATE INDEX idx_server_grants_server ON server_grants(server_id);`
 
+// Version 3 adds the D2-05 identity columns and makes the table append-only. No
+// column references servers, nodes, or users: deleting a server must not delete
+// or block its history. Rows written before this migration keep a null
+// server_id, because attributing them to the adopted server would be a
+// fabrication, and the interface reads them as fleet history.
+const schemaVersion3 = `
+ALTER TABLE audit_events ADD COLUMN principal_kind TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE audit_events ADD COLUMN principal_id TEXT;
+ALTER TABLE audit_events ADD COLUMN server_id TEXT;
+ALTER TABLE audit_events ADD COLUMN node_id TEXT;
+ALTER TABLE audit_events ADD COLUMN request_id TEXT;
+ALTER TABLE audit_events ADD COLUMN job_id TEXT;
+ALTER TABLE audit_events ADD COLUMN attempt INTEGER NOT NULL DEFAULT 1;
+CREATE INDEX idx_audit_server ON audit_events(server_id, occurred_at DESC, id DESC);
+CREATE TRIGGER audit_events_immutable_update BEFORE UPDATE ON audit_events
+BEGIN
+  SELECT RAISE(ABORT, 'audit_events is append-only');
+END;
+CREATE TRIGGER audit_events_immutable_delete BEFORE DELETE ON audit_events
+BEGIN
+  SELECT RAISE(ABORT, 'audit_events is append-only');
+END;`
+
 var migrations = []migration{
 	{version: 1, statements: schemaVersion1},
 	{version: 2, statements: schemaVersion2, adopt: adoptConfiguredServer},
+	{version: 3, statements: schemaVersion3},
 }
 
 // adoptConfiguredServer turns the environment's single server into stored server

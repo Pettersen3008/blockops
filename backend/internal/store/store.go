@@ -65,7 +65,29 @@ type AuditEvent struct {
 	SourceIP   string         `json:"sourceIp"`
 	Outcome    string         `json:"outcome"`
 	Details    map[string]any `json:"details,omitempty"`
+
+	// D2-05 identity. PrincipalKind and PrincipalID are the identity authority;
+	// Username above is display history, so renaming a user never rewrites what
+	// the log said at the time. RequestID ties one HTTP request's events
+	// together, JobID and Attempt one background operation's retries.
+	PrincipalKind PrincipalKind `json:"principalKind"`
+	PrincipalID   string        `json:"principalId,omitempty"`
+	ServerID      string        `json:"serverId,omitempty"`
+	NodeID        string        `json:"nodeId,omitempty"`
+	RequestID     string        `json:"requestId,omitempty"`
+	JobID         string        `json:"jobId,omitempty"`
+	Attempt       int           `json:"attempt,omitempty"`
 }
+
+// PrincipalKind names which record PrincipalID points at.
+type PrincipalKind string
+
+const (
+	PrincipalUser   PrincipalKind = "user"
+	PrincipalToken  PrincipalKind = "token"
+	PrincipalNode   PrincipalKind = "node"
+	PrincipalSystem PrincipalKind = "system"
+)
 
 type AuditOutcome string
 
@@ -90,6 +112,9 @@ type AuditQuery struct {
 	Filter AuditFilter
 	Before *AuditCursor
 	Limit  int
+	// ServerID empty reads the whole fleet. Set, it reads one server and never
+	// returns the pre-migration rows, whose server_id is null.
+	ServerID string
 }
 
 type AuditPage struct {
@@ -372,7 +397,15 @@ func (s *Store) WriteAudit(ctx context.Context, event AuditEvent) error {
 	if err != nil {
 		return fmt.Errorf("encode audit details: %w", err)
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,user_id,username,action,target,source_ip,outcome,details_json) VALUES(?,?,?,?,?,?,?,?,?)`, event.ID, formatAuditTime(event.OccurredAt), nullable(event.UserID), event.Username, event.Action, event.Target, event.SourceIP, event.Outcome, string(details))
+	if event.PrincipalKind == "" {
+		event.PrincipalKind = PrincipalUser
+	}
+	if event.Attempt < 1 {
+		event.Attempt = 1
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO audit_events(id,occurred_at,user_id,username,action,target,source_ip,outcome,details_json,principal_kind,principal_id,server_id,node_id,request_id,job_id,attempt)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, event.ID, formatAuditTime(event.OccurredAt), nullable(event.UserID), event.Username, event.Action, event.Target, event.SourceIP, event.Outcome, string(details),
+		event.PrincipalKind, nullable(event.PrincipalID), nullable(event.ServerID), nullable(event.NodeID), nullable(event.RequestID), nullable(event.JobID), event.Attempt)
 	if err != nil {
 		return fmt.Errorf("write audit event: %w", err)
 	}
@@ -382,6 +415,10 @@ func (s *Store) WriteAudit(ctx context.Context, event AuditEvent) error {
 func (s *Store) ListAudit(ctx context.Context, query AuditQuery) (AuditPage, error) {
 	conditions := []string{"1=1"}
 	arguments := make([]any, 0, 10)
+	if query.ServerID != "" {
+		conditions = append(conditions, "server_id = ?")
+		arguments = append(arguments, query.ServerID)
+	}
 	if query.Filter.Outcome != AuditOutcomeAll {
 		conditions = append(conditions, "outcome = ?")
 		arguments = append(arguments, query.Filter.Outcome)
@@ -402,7 +439,8 @@ OR instr(lower(COALESCE(NULLIF(details_json, 'null'), '{}')), lower(?)) > 0)`)
 		arguments = append(arguments, occurred, occurred, query.Before.ID)
 	}
 	arguments = append(arguments, query.Limit+1)
-	statement := `SELECT id,occurred_at,COALESCE(user_id,''),username,action,target,source_ip,outcome,details_json
+	statement := `SELECT id,occurred_at,COALESCE(user_id,''),username,action,target,source_ip,outcome,details_json,
+principal_kind,COALESCE(principal_id,''),COALESCE(server_id,''),COALESCE(node_id,''),COALESCE(request_id,''),COALESCE(job_id,''),attempt
 FROM audit_events WHERE ` + strings.Join(conditions, " AND ") + `
 ORDER BY occurred_at DESC, id DESC LIMIT ?`
 	rows, err := s.db.QueryContext(ctx, statement, arguments...)
@@ -414,7 +452,8 @@ ORDER BY occurred_at DESC, id DESC LIMIT ?`
 	for rows.Next() {
 		var event AuditEvent
 		var occurred, details string
-		if err := rows.Scan(&event.ID, &occurred, &event.UserID, &event.Username, &event.Action, &event.Target, &event.SourceIP, &event.Outcome, &details); err != nil {
+		if err := rows.Scan(&event.ID, &occurred, &event.UserID, &event.Username, &event.Action, &event.Target, &event.SourceIP, &event.Outcome, &details,
+			&event.PrincipalKind, &event.PrincipalID, &event.ServerID, &event.NodeID, &event.RequestID, &event.JobID, &event.Attempt); err != nil {
 			return AuditPage{}, fmt.Errorf("scan audit event: %w", err)
 		}
 		event.OccurredAt = parseTime(occurred)

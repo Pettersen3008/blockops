@@ -231,7 +231,7 @@ Depends on P2-02. API tokens and the reauthentication window from D2-03.
 
 **Done when.** Disabling a user stops every token they issued on the next request, and an expired or revoked token is indistinguishable from an unknown one.
 
-### P2-05: make audit attributable before fleet work writes to it
+### P2-05: make audit attributable before fleet work writes to it (complete)
 
 Depends on P2-01 and P2-02. The D2-05 columns land before multi-server operations start producing events.
 
@@ -242,6 +242,10 @@ Depends on P2-01 and P2-02. The D2-05 columns land before multi-server operation
 - Per-server audit at `/api/v1/servers/{serverId}/audit` reuses P1-05's cursor contract unchanged. Fleet and per-server export share one `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`, because the limit protects the same streaming path.
 
 **Done when.** Every event written after the migration names its principal kind and ID, an `UPDATE` against `audit_events` fails, and a per-server traversal never duplicates an event within one cursor chain.
+
+Shipped as migration 3 in `backend/internal/store/migrate.go`. The seven columns and the `(server_id, occurred_at DESC, id DESC)` index are plain `ALTER TABLE` additions, because nothing in the table is being rewritten, and two triggers raise on `UPDATE` and `DELETE`. `WriteAudit` defaults `principal_kind` to `user` and `attempt` to `1`, so a caller that names neither still writes an attributable row, and the HTTP audit helper reads the principal from the session and the server from the route rather than from anything the request body can set. A request with no session writes `system`: setup and a failed login are the installation acting on itself, not an anonymous user.
+
+`ServerID` on `AuditQuery` is the only new read parameter, so the fleet and per-server routes share both handlers and both share one `BLOCKOPS_MAX_AUDIT_EXPORT_ROWS`. Per-server reads exclude the pre-migration rows, whose `server_id` is null, and the export gained the identity columns ahead of `user_id`. The dashboard is unchanged: it renders `username`, which D2-05 keeps as display history, and P2-06 owns the per-server view.
 
 ### P2-06: scope the interface to a server
 

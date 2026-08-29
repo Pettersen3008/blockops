@@ -101,6 +101,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/servers/{serverId}/world/download", s.require("world.download", http.HandlerFunc(s.downloadWorld)))
 	mux.Handle("PUT /api/v1/servers/{serverId}/world", s.require("world.replace", http.HandlerFunc(s.replaceWorld)))
 	mux.Handle("POST /api/v1/servers/{serverId}/actions", s.authenticated(http.HandlerFunc(s.serverAction)))
+	mux.Handle("GET /api/v1/servers/{serverId}/audit", s.require("audit.read", http.HandlerFunc(s.auditLog)))
+	mux.Handle("GET /api/v1/servers/{serverId}/audit/export", s.require("audit.read", http.HandlerFunc(s.auditExport)))
 	mux.Handle("GET /api/v1/servers/{serverId}/settings", s.require("settings.manage", http.HandlerFunc(s.settings)))
 	mux.Handle("PUT /api/v1/servers/{serverId}/settings/rcon", s.require("settings.manage", http.HandlerFunc(s.updateRCON)))
 	mux.Handle("GET /api/v1/fleet/audit", s.require("fleet.audit.read", http.HandlerFunc(s.auditLog)))
@@ -848,9 +850,23 @@ func (s *Server) audit(r *http.Request, action, target, outcome string, details 
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := s.store.WriteAudit(ctx, store.AuditEvent{UserID: user.ID, Username: user.Username, Action: action, Target: target, SourceIP: s.sourceIP(r), Outcome: outcome, Details: details}); err != nil {
+	if err := s.store.WriteAudit(ctx, store.AuditEvent{
+		UserID: user.ID, Username: user.Username, Action: action, Target: target,
+		SourceIP: s.sourceIP(r), Outcome: outcome, Details: details,
+		// A request with no session is the installation acting on itself, not an
+		// anonymous user: setup and a failed login both write system-attributed rows.
+		PrincipalKind: principalKind(user), PrincipalID: user.ID,
+		ServerID: r.PathValue("serverId"), RequestID: requestID(r.Context()),
+	}); err != nil {
 		s.logger.Error("audit write failed", "error", err, "action", action, "request_id", requestID(r.Context()))
 	}
+}
+
+func principalKind(user store.User) store.PrincipalKind {
+	if user.ID == "" {
+		return store.PrincipalSystem
+	}
+	return store.PrincipalUser
 }
 
 func (s *Server) internalError(w http.ResponseWriter, r *http.Request, err error) {

@@ -73,7 +73,7 @@ func TestAuditExportGivenFilteredRowsWhenDownloadingThenCapsAndEscapesCSV(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(records) != 2 || records[1][3] != "'=admin" || records[1][4] != "'+backup.restore" || records[1][5] != "'-world" || records[1][6] != "'@source" || !strings.Contains(records[1][8], "[REDACTED]") {
+	if len(records) != 2 || records[1][10] != "'=admin" || records[1][11] != "'+backup.restore" || records[1][12] != "'-world" || records[1][13] != "'@source" || !strings.Contains(records[1][15], "[REDACTED]") {
 		t.Fatalf("export records = %#v", records)
 	}
 	for _, value := range []string{"=x", "+x", "-x", "@x", "\tx", "\rx", "\nx"} {

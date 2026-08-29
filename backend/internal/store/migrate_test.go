@@ -23,7 +23,7 @@ func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsTheFleetSchemaWith
 	defer database.Close()
 
 	version, err := database.SchemaVersion(ctx)
-	if err != nil || version != 2 {
+	if err != nil || version != 3 {
 		t.Fatalf("SchemaVersion() = %d, %v", version, err)
 	}
 	user, err := database.UserByUsername(ctx, "admin")
@@ -59,8 +59,10 @@ func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsTheFleetSchemaWith
 		t.Fatalf("second open: %v", err)
 	}
 	defer reopened.Close()
+	// Counted against the migration list, because the point is that reopening
+	// applies nothing new, not that the list is any particular length.
 	applied := 0
-	if err := reopened.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&applied); err != nil || applied != 2 {
+	if err := reopened.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&applied); err != nil || applied != len(migrations) {
 		t.Fatalf("applied migrations = %d, %v", applied, err)
 	}
 }

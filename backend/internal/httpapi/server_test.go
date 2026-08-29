@@ -254,3 +254,33 @@ func openTestStore(t *testing.T, ctx context.Context) *store.Store {
 	}
 	return database
 }
+
+// D2-05 makes principal_kind and principal_id the identity authority, so an
+// event written from a request has to carry them and the server it was aimed at.
+func TestGivenAnAuditedRequestWhenItIsWrittenThenTheEventNamesItsPrincipalAndServer(t *testing.T) {
+	ctx := context.Background()
+	database := openTestStore(t, ctx)
+	defer database.Close()
+	server, err := New(config.Config{SessionTTL: time.Hour}, database, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := signIn(t, database, "viewer", false)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/servers/"+database.AdoptedServerID()+"/backups", nil)
+	request.AddCookie(cookie)
+	server.Handler().ServeHTTP(httptest.NewRecorder(), request)
+
+	page, err := database.ListAudit(ctx, store.AuditQuery{ServerID: database.AdoptedServerID(), Limit: 10})
+	if err != nil || len(page.Events) != 1 {
+		t.Fatalf("audit page = %+v, %v", page, err)
+	}
+	event := page.Events[0]
+	user, err := database.UserByUsername(ctx, "viewer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event.PrincipalKind != store.PrincipalUser || event.PrincipalID != user.ID || event.ServerID != database.AdoptedServerID() || event.RequestID == "" {
+		t.Fatalf("audit event = %+v", event)
+	}
+}

@@ -326,6 +326,67 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/audit:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: serverAuditLog
+      description: One server's history, using the same cursor contract as the fleet log. Requires audit.read on the server.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: outcome
+          in: query
+          schema: { enum: [all, success, failure, denied], default: all }
+        - name: cursor
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 512 }
+      responses:
+        "200":
+          description: One filtered page in stable server order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events, nextCursor]
+                properties:
+                  events:
+                    type: array
+                    maxItems: 500
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+                  nextCursor: { type: [string, "null"], minLength: 1, maxLength: 512 }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/servers/{serverId}/audit/export:
+    parameters: [{ $ref: "#/components/parameters/ServerID" }]
+    get:
+      tags: [Administration]
+      operationId: exportServerAuditLog
+      description: Streams one server's history as formula-safe CSV, under the same row maximum as the fleet export.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: outcome
+          in: query
+          schema: { enum: [all, success, failure, denied], default: all }
+      responses:
+        "200":
+          description: Audit CSV attachment using the stored redacted details.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /api/v1/fleet/audit:
     get:
       tags: [Administration]
@@ -564,7 +625,7 @@ components:
         status: { type: string }
     AuditEvent:
       type: object
-      required: [id, occurredAt, action, target, sourceIp, outcome]
+      required: [id, occurredAt, action, target, sourceIp, outcome, principalKind]
       properties:
         id: { type: string }
         occurredAt: { type: string, format: date-time }
@@ -575,6 +636,13 @@ components:
         sourceIp: { type: string }
         outcome: { enum: [success, failure, denied] }
         details: { type: object, additionalProperties: true }
+        principalKind: { enum: [user, token, node, system], description: With principalId, the identity authority. username is display history and is not authoritative. }
+        principalId: { type: string }
+        serverId: { type: string, description: Absent on fleet history and on rows written before the migration that added this column. }
+        nodeId: { type: string }
+        requestId: { type: string, description: Ties every event from one HTTP request together. }
+        jobId: { type: string }
+        attempt: { type: integer, minimum: 1 }
     Overview:
       type: object
       description: Availability wrappers omit value and include message when an integration cannot report a metric.
