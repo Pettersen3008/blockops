@@ -16,12 +16,13 @@ const operatorSession: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 describe("audit route", () => {
   it("protects the page with audit.read before requesting events", async () => {
     let requests = 0;
-    server.use(http.get("/api/v1/audit", () => {
+    server.use(http.get("/api/v1/fleet/audit", () => {
       requests += 1;
       return HttpResponse.json({ events: [] });
     }));

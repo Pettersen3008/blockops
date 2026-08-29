@@ -1,8 +1,8 @@
 package auth
 
-// Scoped authorization prototype for Phase 2 decision D2-01. It is the decision
-// artifact the roadmap gates ticket writing on, not yet wired into the HTTP
-// layer: routes still call Allows until the Phase 2 tickets cut over.
+// Scoped authorization from Phase 2 decision D2-01. Authorize is the only
+// authorization path the HTTP layer has: every route resolves a Decision here
+// before it reaches Docker, RCON, or the database.
 
 // ServerState gates mutations. A server leaving active still answers reads so
 // operators can watch it drain.
@@ -117,4 +117,20 @@ func Authorize(principal Principal, request Request) Decision {
 		return Decision{Visible: true, Reason: "server is " + string(request.State)}
 	}
 	return Decision{Allowed: true, Visible: true, Reason: source}
+}
+
+// ServerActionPermission maps the validated action enum onto its permission. The
+// permission is a literal chosen by the switch, never a string built from the
+// request body, so an invented action cannot name a permission.
+func ServerActionPermission(action string) (string, bool) {
+	switch action {
+	case "start":
+		return "server.start", true
+	case "stop":
+		return "server.stop", true
+	case "restart":
+		return "server.restart", true
+	default:
+		return "", false
+	}
 }

@@ -19,6 +19,7 @@ const session: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 const players = [
@@ -61,11 +62,11 @@ describe("PlayersPage", () => {
     let csrfHeader: string | null = null;
     let catalogRequests = 0;
     server.use(
-      http.get("/api/v1/players", () => {
+      http.get("/api/v1/servers/test-server/players", () => {
         catalogRequests += 1;
         return HttpResponse.json({ players });
       }),
-      http.post("/api/v1/players/actions", async ({ request }) => {
+      http.post("/api/v1/servers/test-server/players/actions", async ({ request }) => {
         requests.push(await request.json());
         csrfHeader = request.headers.get("X-CSRF-Token");
         return HttpResponse.json({ response: "Kicked Steve" });
@@ -104,7 +105,7 @@ describe("PlayersPage", () => {
 
   it("returns focus to the action trigger when the dialog closes", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/players", () => HttpResponse.json({ players })));
+    server.use(http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({ players })));
     renderPlayers();
 
     const kick = await screen.findByRole("button", { name: "Kick" });
@@ -120,8 +121,8 @@ describe("PlayersPage", () => {
     const user = userEvent.setup();
     const requests: unknown[] = [];
     server.use(
-      http.get("/api/v1/players", () => HttpResponse.json({ players })),
-      http.post("/api/v1/players/actions", async ({ request }) => {
+      http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({ players })),
+      http.post("/api/v1/servers/test-server/players/actions", async ({ request }) => {
         requests.push(await request.json());
         return HttpResponse.json({ response: "Allowlisted Herobrine" });
       }),
@@ -152,7 +153,7 @@ describe("PlayersPage", () => {
   });
 
   it("rejects malformed catalog data safely", async () => {
-    server.use(http.get("/api/v1/players", () => HttpResponse.json({
+    server.use(http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({
       players: [{ ...players[0], name: "invalid player" }],
     })));
     renderPlayers();
@@ -163,7 +164,7 @@ describe("PlayersPage", () => {
   });
 
   it("keeps viewer controls read-only", async () => {
-    server.use(http.get("/api/v1/players", () => HttpResponse.json({ players })));
+    server.use(http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({ players })));
     renderPlayers({ ...session, user: { ...session.user, role: "viewer" } });
 
     expect(await screen.findByText("Viewer access is read-only.")).toBeVisible();
@@ -174,8 +175,8 @@ describe("PlayersPage", () => {
   it("keeps the allowlist draft when a row action succeeds", async () => {
     const user = userEvent.setup();
     server.use(
-      http.get("/api/v1/players", () => HttpResponse.json({ players })),
-      http.post("/api/v1/players/actions", () => HttpResponse.json({ response: "Kicked Steve" })),
+      http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({ players })),
+      http.post("/api/v1/servers/test-server/players/actions", () => HttpResponse.json({ response: "Kicked Steve" })),
     );
     renderPlayers();
 
@@ -195,11 +196,11 @@ describe("PlayersPage", () => {
     const user = userEvent.setup();
     let catalogRequests = 0;
     server.use(
-      http.get("/api/v1/players", () => {
+      http.get("/api/v1/servers/test-server/players", () => {
         catalogRequests += 1;
         return HttpResponse.json({ players });
       }),
-      http.post("/api/v1/players/actions", () => HttpResponse.json(
+      http.post("/api/v1/servers/test-server/players/actions", () => HttpResponse.json(
         { error: { code: "player_action_failed", message: "The Minecraft player action failed." } },
         { status: 502 },
       )),
@@ -223,8 +224,8 @@ describe("PlayersPage", () => {
   it("does not show a previous failure when the dialog reopens for another player", async () => {
     const user = userEvent.setup();
     server.use(
-      http.get("/api/v1/players", () => HttpResponse.json({ players })),
-      http.post("/api/v1/players/actions", () => HttpResponse.json(
+      http.get("/api/v1/servers/test-server/players", () => HttpResponse.json({ players })),
+      http.post("/api/v1/servers/test-server/players/actions", () => HttpResponse.json(
         { error: { code: "player_action_failed", message: "The Minecraft player action failed." } },
         { status: 502 },
       )),

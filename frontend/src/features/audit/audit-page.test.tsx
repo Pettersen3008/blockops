@@ -37,7 +37,7 @@ const deniedEvent = {
   occurredAt: "2026-08-17T10:00:00Z",
   username: "operator",
   action: "authorization.denied",
-  target: "/api/v1/settings",
+  target: "/api/v1/servers/test-server/settings",
   sourceIp: "10.0.0.9",
   outcome: "denied",
   details: { permission: "settings.manage" },
@@ -77,7 +77,7 @@ describe("AuditPage", () => {
     const blocked = new Promise<void>((resolve) => { release = resolve; });
     let requestMethod = "";
     let requestLimit = "";
-    server.use(http.get("/api/v1/audit", async ({ request }) => {
+    server.use(http.get("/api/v1/fleet/audit", async ({ request }) => {
       requestMethod = request.method;
       requestLimit = new URL(request.url).searchParams.get("limit") ?? "";
       await blocked;
@@ -110,7 +110,7 @@ describe("AuditPage", () => {
 
   it("retries a failed request from the visible error state", async () => {
     let requests = 0;
-    server.use(http.get("/api/v1/audit", () => {
+    server.use(http.get("/api/v1/fleet/audit", () => {
       requests += 1;
       return requests === 1
         ? HttpResponse.json({ error: { message: "Audit storage is unavailable." } }, { status: 503 })
@@ -129,13 +129,13 @@ describe("AuditPage", () => {
 
   it("distinguishes an empty catalog from filters with no matches", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/audit", () => HttpResponse.json(page([]))));
+    server.use(http.get("/api/v1/fleet/audit", () => HttpResponse.json(page([]))));
     const view = renderAudit();
 
     expect(await screen.findByRole("heading", { name: "No audit events yet" })).toBeVisible();
     view.unmount();
 
-    server.use(http.get("/api/v1/audit", ({ request }) => HttpResponse.json(page(
+    server.use(http.get("/api/v1/fleet/audit", ({ request }) => HttpResponse.json(page(
       new URL(request.url).searchParams.get("q") ? [] : [successEvent],
     ))));
     renderAudit();
@@ -146,7 +146,7 @@ describe("AuditPage", () => {
 
   it("restores and updates URL filters with replace navigation", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/audit", ({ request }) => HttpResponse.json(page(
+    server.use(http.get("/api/v1/fleet/audit", ({ request }) => HttpResponse.json(page(
       new URL(request.url).searchParams.get("outcome") === "failure" ? [failureEvent] : [successEvent],
     ))));
     renderAudit(["/audit?q=auth.setup&outcome=success"]);
@@ -164,7 +164,7 @@ describe("AuditPage", () => {
   });
 
   it("canonicalizes invalid outcomes without discarding other deep-link values", async () => {
-    server.use(http.get("/api/v1/audit", () => HttpResponse.json(page([successEvent]))));
+    server.use(http.get("/api/v1/fleet/audit", () => HttpResponse.json(page([successEvent]))));
     renderAudit(["/audit?q=auth&keep=1&outcome=unexpected"]);
 
     expect(await screen.findByRole("cell", { name: "auth.setup" })).toBeVisible();
@@ -174,7 +174,7 @@ describe("AuditPage", () => {
 
   it("keeps replaced filter state across browser back and forward", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/audit", () => HttpResponse.json(page([successEvent, failureEvent]))));
+    server.use(http.get("/api/v1/fleet/audit", () => HttpResponse.json(page([successEvent, failureEvent]))));
     renderAudit(["/before", "/audit?outcome=all"], 1);
     await screen.findByRole("cell", { name: "auth.setup" });
 
@@ -190,7 +190,7 @@ describe("AuditPage", () => {
   it("loads the next server page and resets the cursor when filters change", async () => {
     const user = userEvent.setup();
     const requests: URLSearchParams[] = [];
-    server.use(http.get("/api/v1/audit", ({ request }) => {
+    server.use(http.get("/api/v1/fleet/audit", ({ request }) => {
       const searchParams = new URL(request.url).searchParams;
       requests.push(searchParams);
       if (searchParams.get("outcome") === "failure") return HttpResponse.json(page([failureEvent]));
@@ -200,7 +200,7 @@ describe("AuditPage", () => {
     renderAudit();
     await screen.findByRole("cell", { name: "auth.setup" });
 
-    expect(screen.getByRole("link", { name: "Export CSV" })).toHaveAttribute("href", "/api/v1/audit/export?outcome=all");
+    expect(screen.getByRole("link", { name: "Export CSV" })).toHaveAttribute("href", "/api/v1/fleet/audit/export?outcome=all");
     await user.click(screen.getByRole("button", { name: "Load more" }));
     expect(await screen.findByRole("cell", { name: "authorization.denied" })).toBeVisible();
     expect(requests.at(-1)?.get("cursor")).toBe("next-page");
@@ -209,14 +209,14 @@ describe("AuditPage", () => {
     expect(await screen.findByRole("cell", { name: "backup.create" })).toBeVisible();
     expect(requests.at(-1)?.get("cursor")).toBeNull();
     expect(requests.at(-1)?.get("outcome")).toBe("failure");
-    expect(screen.getByRole("link", { name: "Export CSV" })).toHaveAttribute("href", "/api/v1/audit/export?outcome=failure");
+    expect(screen.getByRole("link", { name: "Export CSV" })).toHaveAttribute("href", "/api/v1/fleet/audit/export?outcome=failure");
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 
   it("renders details as text and truncates their visible value safely", async () => {
     const unsafe = "<img src=x onerror=alert(1)>";
     const longDetails = { note: `${unsafe}${"x".repeat(220)}` };
-    server.use(http.get("/api/v1/audit", () => HttpResponse.json(page([{ ...successEvent, details: longDetails }]))));
+    server.use(http.get("/api/v1/fleet/audit", () => HttpResponse.json(page([{ ...successEvent, details: longDetails }]))));
     renderAudit();
 
     const details = await screen.findByText(`${JSON.stringify(longDetails).slice(0, 180)}…`);
@@ -227,7 +227,7 @@ describe("AuditPage", () => {
   });
 
   it("rejects malformed successful data before untrusted values render", async () => {
-    server.use(http.get("/api/v1/audit", () => HttpResponse.json(page([
+    server.use(http.get("/api/v1/fleet/audit", () => HttpResponse.json(page([
       { ...successEvent, action: "<script>unsafe</script>", outcome: "unknown" },
     ]))));
     renderAudit(["/audit?outcome=unexpected"]);

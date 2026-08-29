@@ -13,6 +13,7 @@ describe("authentication schemas", () => {
       },
       csrfToken: "csrf-token",
       expiresAt: "2026-08-18T00:00:00Z",
+      serverId: "test-server",
     });
     expect(parsed.user.role).toBe("administrator");
   });

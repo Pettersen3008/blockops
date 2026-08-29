@@ -32,6 +32,6 @@ describe("backup contracts", () => {
 
   it("encodes download identifiers as one path segment", () => {
     expect(backupDownloadUrl("backup/id?#%"))
-      .toBe("/api/v1/backups/backup%2Fid%3F%23%25/download");
+      .toBe("/api/v1/servers/test-server/backups/backup%2Fid%3F%23%25/download");
   });
 });

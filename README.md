@@ -26,10 +26,14 @@ BlockOps deliberately has no Docker exec, host shell, general file manager, plug
 | Create/delete/download backups and download world | ✓ | ✓ | — |
 | Restart configured container | ✓ | ✓ | — |
 | Start/stop configured container | ✓ | — | — |
-| Users, security/integration settings, audit log | ✓ | — | — |
+| Security and integration settings | ✓ | — | — |
 | Replace world or restore backup | ✓ | — | — |
+| Users and audit log, held by the fleet owner | ✓ | — | — |
 
-Permissions are enforced by the Go API. The interface only mirrors them for usability.
+Permissions are enforced by the Go API. Every route resolves one decision against
+the server named in its path, and the interface only mirrors the result for
+usability. Per-server capabilities live under `/api/v1/servers/{serverId}`; user
+management and the audit log belong to the installation under `/api/v1/fleet`.
 
 ## Deployment model
 

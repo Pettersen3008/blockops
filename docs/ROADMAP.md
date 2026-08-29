@@ -193,7 +193,7 @@ Migration 2 creates the D2-01 schema and turns the configured server into stored
 
 Shipped in `backend/internal/store/migrate.go`. The role each account held moved to its grant, so `store.User.Role` now reads from `server_grants` and `administrator` also carries `fleet_owner`. The encrypted RCON credentials moved to `server_secrets` under the settings key they were encrypted with, because that string is the cipher's associated data. `auth.Allows` and the unprefixed routes are untouched; P2-02 replaces them.
 
-### P2-02: authorize every route against one server
+### P2-02: authorize every route against one server (complete)
 
 Depends on P2-01. `auth.Authorize` moves from prototype to the only authorization path, and the routes carry the server ID the evaluator needs.
 
@@ -205,6 +205,8 @@ Depends on P2-01. `auth.Authorize` moves from prototype to the only authorizatio
 - Update OpenAPI beside the handlers.
 
 **Done when.** Substituting another server's ID in any URL, body, or WebSocket path returns `404` for an ungranted server, and no handler reaches Docker or RCON without a `Decision`.
+
+Shipped in `backend/internal/httpapi/server.go`. `require` and the server action both resolve their decision through one `authorize` helper, which reads the grant and the lifecycle state from `store.ServerAccess` on every request and writes both the `404` and the `403`. A server ID that names no row denies before `Authorize` runs, because the fleet owner's implicit grant would otherwise cover an invented one. `auth.Allows` is deleted. The console socket re-reads the session and the grant every thirty seconds, so a disabled account, a revoked session, and a removed grant all end the stream. Per-server audit is the one row of the D2-01 table this ticket left alone: `audit_events` has no `server_id` until P2-05, so `/api/v1/fleet/audit` ships and the server-scoped reader ships with the column that can scope it. The dashboard reads its server ID from the session response until P2-06 makes it a route parameter.
 
 ### P2-03: manage grants and fleet ownership
 

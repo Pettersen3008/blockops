@@ -12,6 +12,7 @@ const session: Session = {
   user: { id: "admin-1", username: "admin", role: "administrator", disabled: false, createdAt: "2026-08-17T12:00:00Z" },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 const settings = {
   rcon: { address: "minecraft:25575", configured: true, source: "environment", credentialUpdatesEnabled: true },
@@ -28,8 +29,8 @@ afterEach(() => configureCsrfToken(() => undefined));
 
 function useQueryResponses(users: User[] = [session.user, viewer, disabledUser]) {
   server.use(
-    http.get("/api/v1/settings", () => HttpResponse.json(settings)),
-    http.get("/api/v1/users", () => HttpResponse.json({ users })),
+    http.get("/api/v1/servers/test-server/settings", () => HttpResponse.json(settings)),
+    http.get("/api/v1/fleet/users", () => HttpResponse.json({ users })),
   );
 }
 
@@ -51,11 +52,11 @@ describe("SettingsPage", () => {
     let releaseSettings: (() => void) | undefined;
     const settingsReady = new Promise<void>((resolve) => { releaseSettings = resolve; });
     server.use(
-      http.get("/api/v1/settings", async () => {
+      http.get("/api/v1/servers/test-server/settings", async () => {
         await settingsReady;
         return HttpResponse.json({ ...settings, rcon: { ...settings.rcon, configured: false, credentialUpdatesEnabled: false } });
       }),
-      http.get("/api/v1/users", () => HttpResponse.json({ users: [] })),
+      http.get("/api/v1/fleet/users", () => HttpResponse.json({ users: [] })),
     );
     renderSettings();
     expect(screen.getByRole("status")).toHaveTextContent("Loading protected settings");
@@ -75,12 +76,12 @@ describe("SettingsPage", () => {
   ] as const)("retries a %s failure independently", async (failedRequest, message) => {
     let requests = 0;
     server.use(
-      http.get("/api/v1/settings", () => {
+      http.get("/api/v1/servers/test-server/settings", () => {
         if (failedRequest !== "settings") return HttpResponse.json(settings);
         requests += 1;
         return requests === 1 ? HttpResponse.json({ error: { message } }, { status: 503 }) : HttpResponse.json(settings);
       }),
-      http.get("/api/v1/users", () => {
+      http.get("/api/v1/fleet/users", () => {
         if (failedRequest !== "users") return HttpResponse.json({ users: [session.user] });
         requests += 1;
         return requests === 1 ? HttpResponse.json({ error: { message } }, { status: 503 }) : HttpResponse.json({ users: [session.user] });
@@ -96,11 +97,11 @@ describe("SettingsPage", () => {
 
   it.each(["settings", "users"] as const)("rejects malformed %s data without rendering untrusted fields", async (boundary) => {
     server.use(
-      http.get("/api/v1/settings", () => HttpResponse.json(boundary === "settings" ? {
+      http.get("/api/v1/servers/test-server/settings", () => HttpResponse.json(boundary === "settings" ? {
         ...settings,
         deployment: { ...settings.deployment, minecraftContainer: "<script>unsafe-settings</script>", maxUploadBytes: -1 },
       } : settings)),
-      http.get("/api/v1/users", () => HttpResponse.json({
+      http.get("/api/v1/fleet/users", () => HttpResponse.json({
         users: boundary === "users" ? [{ ...viewer, username: "<script>unsafe-user</script>" }] : [session.user],
       })),
     );
@@ -114,7 +115,7 @@ describe("SettingsPage", () => {
     const requests: unknown[] = [];
     let csrf: string | null = null;
     useQueryResponses();
-    server.use(http.post("/api/v1/users", async ({ request }) => {
+    server.use(http.post("/api/v1/fleet/users", async ({ request }) => {
       requests.push(await request.json());
       csrf = request.headers.get("X-CSRF-Token");
       return HttpResponse.json({ ...viewer, id: "new-admin", username: "second-admin", role: "administrator" }, { status: 201 });
@@ -144,7 +145,7 @@ describe("SettingsPage", () => {
 
   it("keeps create form values when a successful response is malformed", async () => {
     useQueryResponses();
-    server.use(http.post("/api/v1/users", () => HttpResponse.json({ ...viewer, username: "<script>unsafe-created-user</script>" }, { status: 201 })));
+    server.use(http.post("/api/v1/fleet/users", () => HttpResponse.json({ ...viewer, username: "<script>unsafe-created-user</script>" }, { status: 201 })));
     const user = userEvent.setup();
     renderSettings();
     await screen.findByRole("heading", { name: "Users and roles" });
@@ -163,7 +164,7 @@ describe("SettingsPage", () => {
   it("validates RCON credentials and never renders or retains the submitted secret", async () => {
     const requests: unknown[] = [];
     useQueryResponses();
-    server.use(http.put("/api/v1/settings/rcon", async ({ request }) => {
+    server.use(http.put("/api/v1/servers/test-server/settings/rcon", async ({ request }) => {
       requests.push(await request.json());
       return HttpResponse.json({ ...settings.rcon, source: "encrypted database" });
     }));
@@ -194,7 +195,7 @@ describe("SettingsPage", () => {
 
   it("keeps RCON inputs when a successful response is malformed", async () => {
     useQueryResponses();
-    server.use(http.put("/api/v1/settings/rcon", () => HttpResponse.json({
+    server.use(http.put("/api/v1/servers/test-server/settings/rcon", () => HttpResponse.json({
       address: "<script>unsafe-rcon</script>", configured: "yes", source: "untrusted", credentialUpdatesEnabled: true,
     })));
     const user = userEvent.setup();
@@ -236,7 +237,7 @@ describe("SettingsPage", () => {
   it("disables another user with CSRF and never exposes a control for the current user", async () => {
     let csrf: string | null = null;
     useQueryResponses();
-    server.use(http.delete("/api/v1/users/viewer-1", ({ request }) => {
+    server.use(http.delete("/api/v1/fleet/users/viewer-1", ({ request }) => {
       csrf = request.headers.get("X-CSRF-Token");
       return new HttpResponse(null, { status: 204 });
     }));
@@ -255,7 +256,7 @@ describe("SettingsPage", () => {
   it("revokes sessions, broadly invalidates, closes its surface, and restores focus", async () => {
     let csrf: string | null = null;
     useQueryResponses();
-    server.use(http.post("/api/v1/users/viewer-1/revoke-sessions", ({ request }) => {
+    server.use(http.post("/api/v1/fleet/users/viewer-1/revoke-sessions", ({ request }) => {
       csrf = request.headers.get("X-CSRF-Token");
       return new HttpResponse(null, { status: 204 });
     }));
@@ -275,7 +276,7 @@ describe("SettingsPage", () => {
 
   it("owns a malformed revoke response in its dialog and clears it before another action", async () => {
     useQueryResponses();
-    server.use(http.post("/api/v1/users/viewer-1/revoke-sessions", () => HttpResponse.json({ unsafe: "untrusted-mutation" })));
+    server.use(http.post("/api/v1/fleet/users/viewer-1/revoke-sessions", () => HttpResponse.json({ unsafe: "untrusted-mutation" })));
     const user = userEvent.setup();
     renderSettings();
     const revokeViewer = (await screen.findAllByRole("button", { name: "Revoke sessions" })).at(1);
@@ -296,7 +297,7 @@ describe("SettingsPage", () => {
     let releaseFailure: (() => void) | undefined;
     const responseReady = new Promise<void>((resolve) => { releaseFailure = resolve; });
     useQueryResponses();
-    server.use(http.post("/api/v1/users/viewer-1/revoke-sessions", async () => {
+    server.use(http.post("/api/v1/fleet/users/viewer-1/revoke-sessions", async () => {
       await responseReady;
       return HttpResponse.json({ error: { message: "Late revoke failure." } }, { status: 503 });
     }));

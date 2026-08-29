@@ -15,7 +15,7 @@ flowchart LR
 
 ## Trust boundaries
 
-1. **Browser to API:** All request data is untrusted. JSON bodies are size-bounded and reject unknown fields. Cookie sessions are opaque and HttpOnly; mutations require a per-session CSRF token. Server authorization is independent from UI visibility.
+1. **Browser to API:** All request data is untrusted. JSON bodies are size-bounded and reject unknown fields. Cookie sessions are opaque and HttpOnly; mutations require a per-session CSRF token. Every route carries the server it acts on in its path and resolves one `auth.Authorize` decision against the grant and lifecycle state read on that request: a caller who may not learn the server exists gets `404`, one who may but holds too small a role gets `403`. Server authorization is independent from UI visibility.
 2. **API to RCON:** The API accepts Minecraft command text but sends it only through the RCON protocol. Player actions construct fixed command shapes after Java username/reason validation. No package imports `os/exec` and no host shell exists.
 3. **API to world volume:** Paths derive from a validated configured world name, never request paths. ZIP/tar extraction rejects absolute/traversal paths, links, devices, unsupported file types, multiple worlds, and expanded-size limits. Replacement occurs in a same-filesystem staging directory with rollback.
 4. **API to Docker guard:** The dashboard calls a fixed base URL and a configured container name. The guard independently checks that name and implements only the five required Docker operations. Only the guard mounts the socket.

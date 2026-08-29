@@ -30,6 +30,11 @@ import (
 
 const sessionCookie = "blockops_session"
 
+// A console socket re-reads its grant on this interval, so revocation closes the
+// stream instead of surviving until the browser reconnects. A variable because
+// the revocation test cannot wait half a minute.
+var consoleGrantRecheck = 30 * time.Second
+
 //go:embed openapi.yaml
 var openAPISpec []byte
 
@@ -80,28 +85,30 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", s.login)
 	mux.Handle("GET /api/v1/auth/session", s.authenticated(http.HandlerFunc(s.session)))
 	mux.Handle("POST /api/v1/auth/logout", s.authenticated(http.HandlerFunc(s.logout)))
-	mux.Handle("GET /api/v1/overview", s.require("monitor.read", http.HandlerFunc(s.overview)))
-	mux.Handle("GET /api/v1/console/history", s.require("console.read", http.HandlerFunc(s.consoleHistory)))
-	mux.Handle("GET /api/v1/console/ws", s.require("console.read", http.HandlerFunc(s.consoleWebSocket)))
-	mux.Handle("POST /api/v1/console/commands", s.require("console.execute", http.HandlerFunc(s.consoleCommand)))
-	mux.Handle("GET /api/v1/players", s.require("players.read", http.HandlerFunc(s.players)))
-	mux.Handle("POST /api/v1/players/actions", s.require("players.manage", http.HandlerFunc(s.playerAction)))
-	mux.Handle("GET /api/v1/backups", s.require("backups.read", http.HandlerFunc(s.backups)))
-	mux.Handle("POST /api/v1/backups", s.require("backups.create", http.HandlerFunc(s.createBackup)))
-	mux.Handle("DELETE /api/v1/backups/{id}", s.require("backups.delete", http.HandlerFunc(s.deleteBackup)))
-	mux.Handle("GET /api/v1/backups/{id}/download", s.require("backups.download", http.HandlerFunc(s.downloadBackup)))
-	mux.Handle("POST /api/v1/backups/{id}/restore", s.require("backups.restore", http.HandlerFunc(s.restoreBackup)))
-	mux.Handle("GET /api/v1/world/download", s.require("world.download", http.HandlerFunc(s.downloadWorld)))
-	mux.Handle("PUT /api/v1/world", s.require("world.replace", http.HandlerFunc(s.replaceWorld)))
-	mux.Handle("POST /api/v1/server/actions", s.authenticated(http.HandlerFunc(s.serverAction)))
-	mux.Handle("GET /api/v1/audit", s.require("audit.read", http.HandlerFunc(s.auditLog)))
-	mux.Handle("GET /api/v1/audit/export", s.require("audit.read", http.HandlerFunc(s.auditExport)))
-	mux.Handle("GET /api/v1/users", s.require("users.manage", http.HandlerFunc(s.users)))
-	mux.Handle("POST /api/v1/users", s.require("users.manage", http.HandlerFunc(s.createUser)))
-	mux.Handle("DELETE /api/v1/users/{id}", s.require("users.manage", http.HandlerFunc(s.disableUser)))
-	mux.Handle("POST /api/v1/users/{id}/revoke-sessions", s.require("users.manage", http.HandlerFunc(s.revokeUserSessions)))
-	mux.Handle("GET /api/v1/settings", s.require("settings.manage", http.HandlerFunc(s.settings)))
-	mux.Handle("PUT /api/v1/settings/rcon", s.require("settings.manage", http.HandlerFunc(s.updateRCON)))
+	// Every server route carries the ID the evaluator needs in one place, so no
+	// handler reconciles a path against a body. Fleet routes carry no server.
+	mux.Handle("GET /api/v1/servers/{serverId}/overview", s.require("monitor.read", http.HandlerFunc(s.overview)))
+	mux.Handle("GET /api/v1/servers/{serverId}/console/history", s.require("console.read", http.HandlerFunc(s.consoleHistory)))
+	mux.Handle("GET /api/v1/servers/{serverId}/console/ws", s.require("console.read", http.HandlerFunc(s.consoleWebSocket)))
+	mux.Handle("POST /api/v1/servers/{serverId}/console/commands", s.require("console.execute", http.HandlerFunc(s.consoleCommand)))
+	mux.Handle("GET /api/v1/servers/{serverId}/players", s.require("players.read", http.HandlerFunc(s.players)))
+	mux.Handle("POST /api/v1/servers/{serverId}/players/actions", s.require("players.manage", http.HandlerFunc(s.playerAction)))
+	mux.Handle("GET /api/v1/servers/{serverId}/backups", s.require("backups.read", http.HandlerFunc(s.backups)))
+	mux.Handle("POST /api/v1/servers/{serverId}/backups", s.require("backups.create", http.HandlerFunc(s.createBackup)))
+	mux.Handle("DELETE /api/v1/servers/{serverId}/backups/{id}", s.require("backups.delete", http.HandlerFunc(s.deleteBackup)))
+	mux.Handle("GET /api/v1/servers/{serverId}/backups/{id}/download", s.require("backups.download", http.HandlerFunc(s.downloadBackup)))
+	mux.Handle("POST /api/v1/servers/{serverId}/backups/{id}/restore", s.require("backups.restore", http.HandlerFunc(s.restoreBackup)))
+	mux.Handle("GET /api/v1/servers/{serverId}/world/download", s.require("world.download", http.HandlerFunc(s.downloadWorld)))
+	mux.Handle("PUT /api/v1/servers/{serverId}/world", s.require("world.replace", http.HandlerFunc(s.replaceWorld)))
+	mux.Handle("POST /api/v1/servers/{serverId}/actions", s.authenticated(http.HandlerFunc(s.serverAction)))
+	mux.Handle("GET /api/v1/servers/{serverId}/settings", s.require("settings.manage", http.HandlerFunc(s.settings)))
+	mux.Handle("PUT /api/v1/servers/{serverId}/settings/rcon", s.require("settings.manage", http.HandlerFunc(s.updateRCON)))
+	mux.Handle("GET /api/v1/fleet/audit", s.require("fleet.audit.read", http.HandlerFunc(s.auditLog)))
+	mux.Handle("GET /api/v1/fleet/audit/export", s.require("fleet.audit.read", http.HandlerFunc(s.auditExport)))
+	mux.Handle("GET /api/v1/fleet/users", s.require("fleet.users.manage", http.HandlerFunc(s.users)))
+	mux.Handle("POST /api/v1/fleet/users", s.require("fleet.users.manage", http.HandlerFunc(s.createUser)))
+	mux.Handle("DELETE /api/v1/fleet/users/{id}", s.require("fleet.users.manage", http.HandlerFunc(s.disableUser)))
+	mux.Handle("POST /api/v1/fleet/users/{id}/revoke-sessions", s.require("fleet.users.manage", http.HandlerFunc(s.revokeUserSessions)))
 	mux.Handle("/", webui.Handler())
 	return s.recoverMiddleware(s.securityHeaders(s.requestLog(mux)))
 }
@@ -180,7 +187,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 	s.setSessionCookie(w, issued)
 	s.limiter.Reset(key)
 	s.audit(r, "auth.setup", "dashboard", "success", map[string]any{"username": user.Username}, &user)
-	writeJSON(w, http.StatusCreated, sessionResponse(user, issued.CSRFToken, issued.ExpiresAt))
+	writeJSON(w, http.StatusCreated, s.sessionResponse(user, issued.CSRFToken, issued.ExpiresAt))
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -222,12 +229,12 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.setSessionCookie(w, issued)
 	s.limiter.Reset(key)
 	s.audit(r, "auth.login", "dashboard", "success", nil, &user)
-	writeJSON(w, http.StatusOK, sessionResponse(user, issued.CSRFToken, issued.ExpiresAt))
+	writeJSON(w, http.StatusOK, s.sessionResponse(user, issued.CSRFToken, issued.ExpiresAt))
 }
 
 func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 	session := sessionFrom(r.Context())
-	writeJSON(w, http.StatusOK, sessionResponse(session.User, session.CSRFToken, session.ExpiresAt))
+	writeJSON(w, http.StatusOK, s.sessionResponse(session.User, session.CSRFToken, session.ExpiresAt))
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
@@ -268,10 +275,17 @@ func (s *Server) consoleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer connection.Close(websocket.StatusNormalClosure, "console closed")
 	lines, cancel := s.operations.Console.Subscribe()
 	defer cancel()
+	recheck := time.NewTicker(consoleGrantRecheck)
+	defer recheck.Stop()
 	for {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-recheck.C:
+			if !s.consoleStillAllowed(r) {
+				connection.Close(websocket.StatusPolicyViolation, "console access revoked")
+				return
+			}
 		case line, open := <-lines:
 			if !open {
 				return
@@ -284,6 +298,19 @@ func (s *Server) consoleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// consoleStillAllowed re-reads the session as well as the grant, because a
+// disabled account, a revoked session, and a removed grant all have to end the
+// stream and only a fresh read sees any of them.
+func (s *Server) consoleStillAllowed(r *http.Request) bool {
+	token, _ := r.Context().Value(tokenKey).(string)
+	session, err := s.store.SessionByToken(r.Context(), token, time.Now().UTC())
+	if err != nil {
+		return false
+	}
+	decision, err := s.decide(r.Context(), session.User, r.PathValue("serverId"), "console.read")
+	return err == nil && decision.Allowed
 }
 
 func (s *Server) consoleCommand(w http.ResponseWriter, r *http.Request) {
@@ -492,19 +519,20 @@ func (s *Server) serverAction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	permission := "server." + input.Action
-	role := auth.Role(sessionFrom(r.Context()).User.Role)
-	if !auth.Allows(role, permission) {
-		s.audit(r, "server."+input.Action, s.config.MinecraftContainer, "denied", nil, nil)
-		writeError(w, http.StatusForbidden, "forbidden", "Your role does not allow this server action.")
+	permission, known := auth.ServerActionPermission(input.Action)
+	if !known {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_action", "The server action must be start, stop, or restart.")
+		return
+	}
+	if !s.authorize(w, r, permission) {
 		return
 	}
 	if err := s.operations.ContainerAction(r.Context(), input.Action); err != nil {
-		s.audit(r, "server."+input.Action, s.config.MinecraftContainer, "failure", map[string]any{"error": safeOutcome(err)}, nil)
+		s.audit(r, permission, s.config.MinecraftContainer, "failure", map[string]any{"error": safeOutcome(err)}, nil)
 		writeError(w, http.StatusServiceUnavailable, "server_action_failed", "The configured Minecraft container could not be changed.")
 		return
 	}
-	s.audit(r, "server."+input.Action, s.config.MinecraftContainer, "success", nil, nil)
+	s.audit(r, permission, s.config.MinecraftContainer, "success", nil, nil)
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": input.Action + " requested"})
 }
 
@@ -669,16 +697,59 @@ func (s *Server) authenticated(next http.Handler) http.Handler {
 
 func (s *Server) require(permission string, next http.Handler) http.Handler {
 	return s.authenticated(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session := sessionFrom(r.Context())
-		if !auth.Allows(auth.Role(session.User.Role), permission) {
-			if r.Method != http.MethodGet {
-				s.audit(r, "authorization.denied", r.URL.Path, "denied", map[string]any{"permission": permission}, nil)
-			}
-			writeError(w, http.StatusForbidden, "forbidden", "Your role does not allow this action.")
+		if !s.authorize(w, r, permission) {
 			return
 		}
 		next.ServeHTTP(w, r)
 	}))
+}
+
+// authorize answers 404 when the principal may not learn the server exists and
+// 403 when it may. Both statuses are written here, so an unassigned server and an
+// invented one are indistinguishable from outside.
+func (s *Server) authorize(w http.ResponseWriter, r *http.Request, permission string) bool {
+	decision, err := s.decide(r.Context(), sessionFrom(r.Context()).User, r.PathValue("serverId"), permission)
+	if err != nil {
+		s.internalError(w, r, err)
+		return false
+	}
+	if decision.Allowed {
+		return true
+	}
+	if r.Method != http.MethodGet {
+		s.audit(r, "authorization.denied", r.URL.Path, "denied", map[string]any{"permission": permission, "reason": decision.Reason}, nil)
+	}
+	if !decision.Visible {
+		writeError(w, http.StatusNotFound, "not_found", "The requested resource was not found.")
+		return false
+	}
+	writeError(w, http.StatusForbidden, "forbidden", "Your role does not allow this action.")
+	return false
+}
+
+// decide reads the grant and the server's lifecycle state on the request path
+// with nothing cached in front of them, so revoking a grant lands on the
+// principal's next request.
+func (s *Server) decide(ctx context.Context, user store.User, serverID, permission string) (auth.Decision, error) {
+	principal := auth.Principal{ID: user.ID, FleetOwner: user.FleetOwner}
+	request := auth.Request{ServerID: serverID, Permission: permission}
+	if serverID != "" {
+		access, err := s.store.ServerAccess(ctx, serverID, user.ID)
+		if errors.Is(err, store.ErrNotFound) {
+			// A server that does not exist has to answer exactly like one the principal
+			// holds no grant on, including for a fleet owner whose implicit grant would
+			// otherwise cover an invented ID.
+			return auth.Decision{Reason: "no such server"}, nil
+		}
+		if err != nil {
+			return auth.Decision{}, err
+		}
+		request.State = auth.ServerState(access.State)
+		if access.Role != "" {
+			principal.Grants = map[string]auth.Role{serverID: auth.Role(access.Role)}
+		}
+	}
+	return auth.Authorize(principal, request), nil
 }
 
 func (s *Server) requireCSRF(w http.ResponseWriter, r *http.Request) bool {
@@ -891,8 +962,10 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, envelope)
 }
 
-func sessionResponse(user store.User, csrfToken string, expiresAt time.Time) map[string]any {
-	return map[string]any{"user": user, "csrfToken": csrfToken, "expiresAt": expiresAt}
+// ponytail: serverId is the one server a session can address. P2-06 replaces it
+// with the list of granted servers once the interface can switch between them.
+func (s *Server) sessionResponse(user store.User, csrfToken string, expiresAt time.Time) map[string]any {
+	return map[string]any{"user": user, "csrfToken": csrfToken, "expiresAt": expiresAt, "serverId": s.store.AdoptedServerID()}
 }
 
 func sessionFrom(ctx context.Context) store.Session {

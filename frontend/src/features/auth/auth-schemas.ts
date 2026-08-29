@@ -16,6 +16,7 @@ export const sessionSchema = z.object({
   user: userSchema,
   csrfToken: z.string().min(1),
   expiresAt: z.iso.datetime({ offset: true }),
+  serverId: z.string().min(1),
 });
 
 export const setupStatusSchema = z.object({ required: z.boolean() });

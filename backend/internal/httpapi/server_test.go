@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -73,7 +74,7 @@ func TestSetupSessionCSRFAndBackendAuthorization(t *testing.T) {
 	if err := database.CreateSession(context.Background(), store.Session{IDHash: store.TokenHash(viewerToken), CSRFToken: "viewer-csrf", CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour)}, viewerID); err != nil {
 		t.Fatal(err)
 	}
-	commandRequest := httptest.NewRequest(http.MethodPost, "/api/v1/console/commands", bytes.NewBufferString(`{"command":"say should not run"}`))
+	commandRequest := httptest.NewRequest(http.MethodPost, "/api/v1/servers/"+database.AdoptedServerID()+"/console/commands", bytes.NewBufferString(`{"command":"say should not run"}`))
 	commandRequest.AddCookie(&http.Cookie{Name: sessionCookie, Value: viewerToken})
 	commandRequest.Header.Set("X-CSRF-Token", "viewer-csrf")
 	commandResponse := httptest.NewRecorder()
@@ -135,6 +136,111 @@ func TestSourceIPIgnoresForwardingFromUntrustedPeer(t *testing.T) {
 	if got := server.sourceIP(request); got != "192.0.2.10" {
 		t.Fatalf("sourceIP() = %q, want direct peer", got)
 	}
+}
+
+// The P2-02 exit criterion: an ID the principal holds no grant on answers exactly
+// like one that never existed, and a fleet owner's implicit grant over every
+// server does not stretch to an invented one.
+func TestGivenSubstitutedServerIDWhenRequestingThenAnswersNotFound(t *testing.T) {
+	ctx := context.Background()
+	database := openTestStore(t, ctx)
+	defer database.Close()
+	server, err := New(config.Config{SessionTTL: time.Hour}, database, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := signIn(t, database, "owner", true)
+
+	for name, expected := range map[string]struct {
+		serverID string
+		status   int
+	}{
+		"the adopted server": {database.AdoptedServerID(), http.StatusOK},
+		"an invented server": {"00000000000000000000000000000000", http.StatusNotFound},
+		"an empty server ID": {" ", http.StatusNotFound},
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/api/v1/servers/"+url.PathEscape(expected.serverID)+"/backups", nil)
+			request.AddCookie(cookie)
+			response := httptest.NewRecorder()
+			server.Handler().ServeHTTP(response, request)
+			if response.Code != expected.status {
+				t.Fatalf("status = %d, want %d, body = %s", response.Code, expected.status, response.Body.String())
+			}
+		})
+	}
+}
+
+// A socket that outlives its authorization is the one place a revocation could
+// wait for a reconnect, so the stream re-reads the session while it is open.
+func TestGivenRevokedAccessWhenConsoleSocketIsOpenThenCloses(t *testing.T) {
+	ctx := context.Background()
+	database := openTestStore(t, ctx)
+	defer database.Close()
+	previous := consoleGrantRecheck
+	consoleGrantRecheck = 20 * time.Millisecond
+	defer func() { consoleGrantRecheck = previous }()
+
+	service := &operations.Service{Console: console.New("unused", 100)}
+	server, err := New(config.Config{SessionTTL: time.Hour}, database, service, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+	cookie := signIn(t, database, "watcher", false)
+
+	connection, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(httpServer.URL, "http")+"/api/v1/servers/"+database.AdoptedServerID()+"/console/ws",
+		&websocket.DialOptions{HTTPHeader: http.Header{
+			"Origin": []string{httpServer.URL},
+			"Cookie": []string{cookie.Name + "=" + cookie.Value},
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.CloseNow()
+
+	if err := database.DisableUser(ctx, userID(t, database, "watcher")); err != nil {
+		t.Fatal(err)
+	}
+	readContext, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if _, _, err := connection.Read(readContext); err == nil {
+		t.Fatal("socket stayed open after the account lost access")
+	}
+}
+
+// signIn creates an account with a grant on the adopted server and a session
+// cookie for it.
+func signIn(t *testing.T, database *store.Store, username string, fleetOwner bool) *http.Cookie {
+	t.Helper()
+	ctx := context.Background()
+	id, err := store.NewID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	role := auth.Viewer
+	if fleetOwner {
+		role = auth.Administrator
+	}
+	user := store.User{ID: id, Username: username, PasswordHash: "unused", Role: string(role), FleetOwner: fleetOwner, CreatedAt: time.Now().UTC()}
+	if err := database.CreateUser(ctx, user, "test"); err != nil {
+		t.Fatal(err)
+	}
+	token := username + "-session-token"
+	if err := database.CreateSession(ctx, store.Session{IDHash: store.TokenHash(token), CSRFToken: username + "-csrf", CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour)}, id); err != nil {
+		t.Fatal(err)
+	}
+	return &http.Cookie{Name: sessionCookie, Value: token}
+}
+
+func userID(t *testing.T, database *store.Store, username string) string {
+	t.Helper()
+	user, err := database.UserByUsername(context.Background(), username)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return user.ID
 }
 
 func openTestStore(t *testing.T, ctx context.Context) *store.Store {

@@ -9,7 +9,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   let closeConsoleSocket: (() => Promise<void>) | undefined;
   let sendConsoleFrame: ((frame: string | Buffer) => void) | undefined;
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.routeWebSocket("**/api/v1/console/ws", (socket) => {
+  await page.routeWebSocket("**/api/v1/servers/*/console/ws", (socket) => {
     closeConsoleSocket = () => socket.close({ code: 1012, reason: "Reconnect verification" });
     sendConsoleFrame = (frame) => socket.send(frame);
   });
@@ -73,7 +73,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(stopButton).toBeFocused();
 
-  await page.route("**/api/v1/backups", async (route) => {
+  await page.route("**/api/v1/servers/*/backups", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     await route.fulfill({
       status: 503,
@@ -88,9 +88,9 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Create a consistent backup?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(backupButton).toBeFocused();
-  await page.unroute("**/api/v1/backups");
+  await page.unroute("**/api/v1/servers/*/backups");
 
-  await page.route("**/api/v1/server/actions", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/actions", (route) => route.fulfill({
     status: 503,
     contentType: "application/json",
     body: JSON.stringify({ error: { code: "server_action_failed", message: "The configured Minecraft container could not be changed." } }),
@@ -101,7 +101,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Restart the Minecraft server?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(restartButton).toBeFocused();
-  await page.unroute("**/api/v1/server/actions");
+  await page.unroute("**/api/v1/servers/*/actions");
   const desktopOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
     .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
     .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
@@ -111,7 +111,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   let consoleHistoryRequests = 0;
   let consoleCommandRequests = 0;
   let consoleCommandResponse: "success" | "failure" | "malformed" = "success";
-  await page.route("**/api/v1/console/history", async (route) => {
+  await page.route("**/api/v1/servers/*/console/history", async (route) => {
     consoleHistoryRequests += 1;
     if (consoleHistoryRequests === 1) await new Promise((resolve) => setTimeout(resolve, 300));
     await route.fulfill({
@@ -122,7 +122,7 @@ test("secure first-run and primary operations remain usable when integrations ar
         : { lines: [{ sequence: 10, timestamp: "2026-08-24T10:00:00Z", text: "[WARN] intercepted history" }] }),
     });
   });
-  await page.route("**/api/v1/console/commands", async (route) => {
+  await page.route("**/api/v1/servers/*/console/commands", async (route) => {
     consoleCommandRequests += 1;
     expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
     if (consoleCommandResponse === "failure") {
@@ -208,7 +208,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Replace the current world?" })).toBeHidden();
   await expect(replaceWorldButton).toBeFocused();
 
-  await page.route("**/api/v1/backups", async (route) => {
+  await page.route("**/api/v1/servers/*/backups", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     await new Promise((resolve) => setTimeout(resolve, 400));
     return route.continue();
@@ -216,7 +216,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByRole("link", { name: "Backups", exact: true }).click();
   await expect(page.getByText("Loading local backup catalog")).toBeVisible();
   await expect(page.getByRole("heading", { name: "No backups yet" })).toBeVisible();
-  await page.unroute("**/api/v1/backups");
+  await page.unroute("**/api/v1/servers/*/backups");
 
   const createBackupButton = page.getByRole("button", { name: "Create backup" });
   await createBackupButton.click();
@@ -230,7 +230,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
 
-  await page.route("**/api/v1/backups", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/backups", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ backups: [{
@@ -245,13 +245,13 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
   await expect(page.getByText("unsafe/id", { exact: true })).toBeHidden();
-  await page.unroute("**/api/v1/backups");
+  await page.unroute("**/api/v1/servers/*/backups");
 
   const browserBackups = [
     { id: "fedcba9876543210fedcba9876543210", sizeBytes: 1572864, createdAt: "2026-08-17T12:00:00Z", createdBy: username, status: "ready" },
     { id: "0123456789abcdef0123456789abcdef", sizeBytes: 1024, createdAt: "2026-08-16T11:00:00Z", createdBy: username, status: "ready" },
   ];
-  await page.route("**/api/v1/backups", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/backups", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ backups: browserBackups }),
@@ -263,7 +263,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(backupRows.nth(1)).toContainText(browserBackups[1].id);
   await expect(backupRows.nth(0).getByRole("link", { name: "Download" })).toHaveAttribute(
     "href",
-    `/api/v1/backups/${browserBackups[0].id}/download`,
+    new RegExp(`^/api/v1/servers/[a-f0-9]{32}/backups/${browserBackups[0].id}/download$`),
   );
   await page.setViewportSize({ width: 390, height: 844 });
   const backupOverflow = await page.evaluate(() => [...document.querySelectorAll("body *")]
@@ -274,7 +274,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(backupRows.nth(0).getByRole("button", { name: "Delete" })).toBeVisible();
   await expect(backupRows.nth(0).getByRole("button", { name: "Restore" })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.unroute("**/api/v1/backups");
+  await page.unroute("**/api/v1/servers/*/backups");
 
   await page.getByRole("link", { name: "Audit log", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Audit log", exact: true })).toBeVisible();
@@ -312,13 +312,13 @@ test("secure first-run and primary operations remain usable when integrations ar
       occurredAt: "2026-08-17T10:00:00Z",
       username: "operator",
       action: "authorization.denied",
-      target: "/api/v1/settings",
+      target: "/api/v1/servers/0123456789abcdef0123456789abcdef/settings",
       sourceIp: "10.0.0.9",
       outcome: "denied",
       details: { permission: "settings.manage" },
     },
   ];
-  const auditRoute = "**/api/v1/audit?*";
+  const auditRoute = "**/api/v1/fleet/audit?*";
   await page.route(auditRoute, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const searchParams = new URL(route.request().url()).searchParams;
@@ -394,16 +394,16 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByText("Never", { exact: true })).toBeVisible();
   await expect(page.getByText("Not available", { exact: true })).toBeVisible();
 
-  await page.route("**/api/v1/settings", async (route) => {
+  await page.route("**/api/v1/servers/*/settings", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     await route.continue();
   });
   await page.reload();
   await expect(page.getByText("Loading protected settings")).toBeVisible();
   await expect(page.getByRole("heading", { name: "RCON credentials" })).toBeVisible();
-  await page.unroute("**/api/v1/settings");
+  await page.unroute("**/api/v1/servers/*/settings");
 
-  await page.route("**/api/v1/settings", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/settings", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ unsafe: "unvalidated-settings" }),
@@ -412,10 +412,10 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
   await expect(page.getByText("unvalidated-settings", { exact: true })).toBeHidden();
-  await page.unroute("**/api/v1/settings");
+  await page.unroute("**/api/v1/servers/*/settings");
 
   let rconUpdateRequests = 0;
-  await page.route("**/api/v1/settings", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/settings", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -423,7 +423,7 @@ test("secure first-run and primary operations remain usable when integrations ar
       deployment: { minecraftContainer: "minecraft", worldName: "world", cookieSecure: false, trustedProxyCount: 0, maxUploadBytes: 1024 },
     }),
   }));
-  await page.route("**/api/v1/settings/rcon", (route) => {
+  await page.route("**/api/v1/servers/*/settings/rcon", (route) => {
     rconUpdateRequests += 1;
     return route.abort();
   });
@@ -434,8 +434,8 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByText("RCON address must use host:port format.")).toBeVisible();
   await expect(page.getByText("RCON password must be at least 8 characters.")).toBeVisible();
   expect(rconUpdateRequests).toBe(0);
-  await page.unroute("**/api/v1/settings/rcon");
-  await page.unroute("**/api/v1/settings");
+  await page.unroute("**/api/v1/servers/*/settings/rcon");
+  await page.unroute("**/api/v1/servers/*/settings");
   await page.reload();
 
   await page.getByRole("button", { name: "Create user" }).click();
@@ -489,7 +489,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
-  await page.route("**/api/v1/backups", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/backups", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ backups: [{
@@ -506,7 +506,7 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("button", { name: "Delete" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Restore" })).toBeHidden();
   await expect(page.getByRole("link", { name: "Download" })).toBeHidden();
-  await page.unroute("**/api/v1/backups");
+  await page.unroute("**/api/v1/servers/*/backups");
 
   await page.goto("/console");
   await expect(page.getByText("Viewer access is read-only. Ask an administrator for the Operator role to submit Minecraft commands.")).toBeVisible();
@@ -541,8 +541,8 @@ test("secure first-run and primary operations remain usable when integrations ar
     .slice(0, 10));
   expect(overflowingElements).toEqual([]);
 
-  await page.unroute("**/api/v1/overview");
-  await page.route("**/api/v1/overview", async (route) => {
+  await page.unroute("**/api/v1/servers/*/overview");
+  await page.route("**/api/v1/servers/*/overview", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     await route.continue();
   });
@@ -552,9 +552,9 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("button", { name: "Back up now" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Graceful restart" })).toHaveCount(0);
   await expect(page.getByLabel("Server lifecycle controls")).toHaveCount(0);
-  await page.unroute("**/api/v1/overview");
+  await page.unroute("**/api/v1/servers/*/overview");
 
-  await page.route("**/api/v1/overview", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/overview", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ unsafe: "unvalidated" }),
@@ -563,9 +563,9 @@ test("secure first-run and primary operations remain usable when integrations ar
   await expect(page.getByRole("heading", { name: "Couldn’t load this view" })).toBeVisible();
   await expect(page.getByText("BlockOps returned an invalid response.")).toBeVisible();
   await expect(page.getByText("unvalidated", { exact: true })).toBeHidden();
-  await page.unroute("**/api/v1/overview");
+  await page.unroute("**/api/v1/servers/*/overview");
 
-  await page.route("**/api/v1/overview", (route) => route.fulfill({
+  await page.route("**/api/v1/servers/*/overview", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -592,7 +592,7 @@ test("secure first-run and primary operations remain usable when integrations ar
     .map((element) => `${element.tagName.toLowerCase()}.${element.className}`)
     .slice(0, 10));
   expect(overviewOverflow).toEqual([]);
-  await page.unroute("**/api/v1/overview");
+  await page.unroute("**/api/v1/servers/*/overview");
 
   expect(pageErrors).toEqual([]);
 });

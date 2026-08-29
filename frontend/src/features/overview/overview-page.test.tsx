@@ -20,6 +20,7 @@ const session: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 const unavailableOverview = {
@@ -89,7 +90,7 @@ function sessionWithRole(role: Role): Session {
 describe("OverviewPage", () => {
   it("shows loading, unavailable integrations, empty warnings, and retryable errors", async () => {
     let requests = 0;
-    server.use(http.get("/api/v1/overview", async () => {
+    server.use(http.get("/api/v1/servers/test-server/overview", async () => {
       requests += 1;
       await delay(40);
       if (requests === 1) return HttpResponse.json({ error: { code: "unavailable", message: "Live state failed." } }, { status: 503 });
@@ -109,7 +110,7 @@ describe("OverviewPage", () => {
 
   it("uses the application retry policy when a transient query fails", async () => {
     let requests = 0;
-    server.use(http.get("/api/v1/overview", () => {
+    server.use(http.get("/api/v1/servers/test-server/overview", () => {
       requests += 1;
       return requests === 1
         ? HttpResponse.json({ error: { code: "temporary", message: "Temporary failure." } }, { status: 503 })
@@ -123,7 +124,7 @@ describe("OverviewPage", () => {
   });
 
   it("renders available state, formatting, server order, capacity, and warnings", async () => {
-    server.use(http.get("/api/v1/overview", () => HttpResponse.json(availableOverview)));
+    server.use(http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(availableOverview)));
     renderOverview();
 
     expect(await screen.findByRole("heading", { name: "Minecraft server" })).toBeVisible();
@@ -150,7 +151,7 @@ describe("OverviewPage", () => {
   });
 
   it("rejects malformed query success without rendering untrusted values", async () => {
-    server.use(http.get("/api/v1/overview", () => HttpResponse.json({
+    server.use(http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json({
       ...unavailableOverview,
       recentWarnings: [{ text: "untrusted warning" }],
     })));
@@ -165,8 +166,8 @@ describe("OverviewPage", () => {
     const user = userEvent.setup();
     let csrf: string | null = null;
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/backups", ({ request }) => {
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/backups", ({ request }) => {
         csrf = request.headers.get("X-CSRF-Token");
         return HttpResponse.json(backup, { status: 201 });
       }),
@@ -190,8 +191,8 @@ describe("OverviewPage", () => {
     const user = userEvent.setup();
     let response: "failure" | "malformed" = "failure";
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/backups", () => response === "failure"
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/backups", () => response === "failure"
         ? HttpResponse.json({ error: { code: "backup_failed", message: "The backup could not be created safely." } }, { status: 503 })
         : HttpResponse.json({ ...backup, id: "unsafe/id" }, { status: 201 })),
     );
@@ -218,8 +219,8 @@ describe("OverviewPage", () => {
     const user = userEvent.setup();
     let request: { body: unknown; csrf: string | null } | undefined;
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/server/actions", async ({ request: incoming }) => {
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/actions", async ({ request: incoming }) => {
         request = { body: await incoming.json(), csrf: incoming.headers.get("X-CSRF-Token") };
         return HttpResponse.json({ status: "restart requested" }, { status: 202 });
       }),
@@ -240,8 +241,8 @@ describe("OverviewPage", () => {
   it("keeps lifecycle confirmation visible and skips cleanup or invalidation on malformed success", async () => {
     const user = userEvent.setup();
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/server/actions", () => HttpResponse.json({ status: "unexpected" }, { status: 202 })),
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/actions", () => HttpResponse.json({ status: "unexpected" }, { status: 202 })),
     );
     const queryClient = renderOverview();
     queryClient.setQueryData(unrelatedQueryKey, { cached: true });
@@ -257,8 +258,8 @@ describe("OverviewPage", () => {
   it("disables confirmation while a lifecycle request is pending and reports failure", async () => {
     const user = userEvent.setup();
     server.use(
-      http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)),
-      http.post("/api/v1/server/actions", async () => {
+      http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)),
+      http.post("/api/v1/servers/test-server/actions", async () => {
         await delay(40);
         return HttpResponse.json({ error: { code: "server_action_failed", message: "The configured Minecraft container could not be changed." } }, { status: 503 });
       }),
@@ -275,7 +276,7 @@ describe("OverviewPage", () => {
 
   it("restores focus when confirmation is cancelled", async () => {
     const user = userEvent.setup();
-    server.use(http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)));
+    server.use(http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)));
     renderOverview();
 
     const restart = await screen.findByRole("button", { name: "Graceful restart" });
@@ -291,7 +292,7 @@ describe("OverviewPage", () => {
     ["operator", true, true, false],
     ["viewer", false, false, false],
   ] as const)("renders only %s permissions", async (role, backupAllowed, restartAllowed, lifecycleAllowed) => {
-    server.use(http.get("/api/v1/overview", () => HttpResponse.json(unavailableOverview)));
+    server.use(http.get("/api/v1/servers/test-server/overview", () => HttpResponse.json(unavailableOverview)));
     renderOverview(sessionWithRole(role));
 
     await screen.findByRole("heading", { name: "Overview" });

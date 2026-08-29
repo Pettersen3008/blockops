@@ -17,6 +17,7 @@ const session: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 /** Proves the session reached the routed page, not just that something rendered. */

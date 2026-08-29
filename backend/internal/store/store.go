@@ -24,8 +24,10 @@ var (
 
 type Store struct {
 	db *sql.DB
-	// ponytail: the adopted server every query is scoped to. P2-02 puts the server
-	// ID on the request and this field goes away.
+	// ponytail: the adopted server every resource query is scoped to. Routes now
+	// carry a server ID and ServerAccess resolves it, so the only ID that can pass
+	// authorization is this one. Phase 3 creates a second server, and that is when
+	// the resource queries take the ID from the caller instead.
 	serverID string
 }
 
@@ -128,6 +130,34 @@ func Open(ctx context.Context, path string, adopt Adoption) (*Store, error) {
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// AdoptedServerID is the server every session is scoped to until the fleet
+// interface lands. The dashboard reads it to address the scoped routes.
+func (s *Store) AdoptedServerID() string { return s.serverID }
+
+// ServerAccess is one principal's standing on one server: the server's lifecycle
+// state and the role granted, empty when nothing is granted.
+type ServerAccess struct {
+	State string
+	Role  string
+}
+
+// ServerAccess reads the whole authorization input for one request. It runs on
+// every authorized route with no cache in front of it, so revoking a grant lands
+// on the principal's next request.
+func (s *Store) ServerAccess(ctx context.Context, serverID, userID string) (ServerAccess, error) {
+	var access ServerAccess
+	err := s.db.QueryRowContext(ctx, `SELECT s.state, COALESCE(g.role,'')
+	  FROM servers s LEFT JOIN server_grants g ON g.server_id = s.id AND g.user_id = ?
+	  WHERE s.id = ?`, userID, serverID).Scan(&access.State, &access.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ServerAccess{}, ErrNotFound
+	}
+	if err != nil {
+		return ServerAccess{}, fmt.Errorf("read server access: %w", err)
+	}
+	return access, nil
+}
 
 func NewID() (string, error) {
 	bytes := make([]byte, 16)

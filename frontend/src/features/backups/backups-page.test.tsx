@@ -20,6 +20,7 @@ const session: Session = {
   },
   csrfToken: "csrf-token",
   expiresAt: "2026-08-18T00:00:00Z",
+  serverId: "test-server",
 };
 
 const olderBackup = {
@@ -61,14 +62,14 @@ function renderBackups(currentSession = session) {
 }
 
 function catalog(backups = [newerBackup, olderBackup]) {
-  server.use(http.get("/api/v1/backups", () => HttpResponse.json({ backups })));
+  server.use(http.get("/api/v1/servers/test-server/backups", () => HttpResponse.json({ backups })));
 }
 
 describe("BackupsPage", () => {
   it("shows loading, retries a failed catalog, and renders the empty state", async () => {
     const user = userEvent.setup();
     let requests = 0;
-    server.use(http.get("/api/v1/backups", () => {
+    server.use(http.get("/api/v1/servers/test-server/backups", () => {
       requests += 1;
       return requests === 1
         ? HttpResponse.json({ error: { code: "catalog_failed", message: "The backup catalog is unavailable." } }, { status: 503 })
@@ -101,7 +102,7 @@ describe("BackupsPage", () => {
     expect(rows[1]).toHaveTextContent(formatDate(olderBackup.createdAt));
     expect(within(rows[0]!).getByRole("link", { name: "Download" })).toHaveAttribute(
       "href",
-      `/api/v1/backups/${newerBackup.id}/download`,
+      `/api/v1/servers/test-server/backups/${newerBackup.id}/download`,
     );
     expect(rows[0]).toHaveClass("min-w-0");
   });
@@ -111,11 +112,11 @@ describe("BackupsPage", () => {
     let catalogRequests = 0;
     let csrfHeader: string | null = null;
     server.use(
-      http.get("/api/v1/backups", () => {
+      http.get("/api/v1/servers/test-server/backups", () => {
         catalogRequests += 1;
         return HttpResponse.json({ backups: [] });
       }),
-      http.post("/api/v1/backups", ({ request }) => {
+      http.post("/api/v1/servers/test-server/backups", ({ request }) => {
         csrfHeader = request.headers.get("X-CSRF-Token");
         return HttpResponse.json(newerBackup, { status: 201 });
       }),
@@ -142,7 +143,7 @@ describe("BackupsPage", () => {
   ])("keeps the create confirmation and cache intact after %s", async (_name, response, message) => {
     const user = userEvent.setup();
     catalog([]);
-    server.use(http.post("/api/v1/backups", () => response));
+    server.use(http.post("/api/v1/servers/test-server/backups", () => response));
     const queryClient = renderBackups();
     queryClient.setQueryData(unrelatedQueryKey, { status: "cached" });
 
@@ -158,7 +159,7 @@ describe("BackupsPage", () => {
     let deleted = false;
     let csrfHeader: string | null = null;
     catalog([newerBackup]);
-    server.use(http.delete(`/api/v1/backups/${newerBackup.id}`, ({ request }) => {
+    server.use(http.delete(`/api/v1/servers/test-server/backups/${newerBackup.id}`, ({ request }) => {
       deleted = true;
       csrfHeader = request.headers.get("X-CSRF-Token");
       return new HttpResponse(null, { status: 204 });
@@ -185,7 +186,7 @@ describe("BackupsPage", () => {
   it("restores a backup, disables dialog controls while pending, and invalidates", async () => {
     const user = userEvent.setup();
     catalog([newerBackup]);
-    server.use(http.post(`/api/v1/backups/${newerBackup.id}/restore`, async () => {
+    server.use(http.post(`/api/v1/servers/test-server/backups/${newerBackup.id}/restore`, async () => {
       await delay(50);
       return HttpResponse.json({ status: "restored" });
     }));
@@ -203,8 +204,8 @@ describe("BackupsPage", () => {
   });
 
   it.each([
-    ["delete", "Delete", "Delete backup", http.delete(`/api/v1/backups/${newerBackup.id}`, () => HttpResponse.json({ unexpected: true }))],
-    ["restore", "Restore", "Restore backup", http.post(`/api/v1/backups/${newerBackup.id}/restore`, () => HttpResponse.json({ status: "unknown" }))],
+    ["delete", "Delete", "Delete backup", http.delete(`/api/v1/servers/test-server/backups/${newerBackup.id}`, () => HttpResponse.json({ unexpected: true }))],
+    ["restore", "Restore", "Restore backup", http.post(`/api/v1/servers/test-server/backups/${newerBackup.id}/restore`, () => HttpResponse.json({ status: "unknown" }))],
   ])("rejects a malformed successful %s response without cleanup or invalidation", async (_name, triggerName, confirmName, handler) => {
     const user = userEvent.setup();
     catalog([newerBackup]);
@@ -222,7 +223,7 @@ describe("BackupsPage", () => {
   it("keeps the restore confirmation visible after an HTTP failure", async () => {
     const user = userEvent.setup();
     catalog([newerBackup]);
-    server.use(http.post(`/api/v1/backups/${newerBackup.id}/restore`, () => HttpResponse.json(
+    server.use(http.post(`/api/v1/servers/test-server/backups/${newerBackup.id}/restore`, () => HttpResponse.json(
       { error: { code: "restore_failed", message: "The backup could not be restored. The prior world was preserved when possible." } },
       { status: 503 },
     )));
@@ -239,7 +240,7 @@ describe("BackupsPage", () => {
   it("clears only the closed action failure before another action opens", async () => {
     const user = userEvent.setup();
     catalog([newerBackup]);
-    server.use(http.delete(`/api/v1/backups/${newerBackup.id}`, () => HttpResponse.json(
+    server.use(http.delete(`/api/v1/servers/test-server/backups/${newerBackup.id}`, () => HttpResponse.json(
       { error: { code: "backup_not_found", message: "The backup was not found." } },
       { status: 404 },
     )));
