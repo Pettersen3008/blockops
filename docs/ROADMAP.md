@@ -179,7 +179,7 @@ flowchart LR
   P206 --> P207
 ```
 
-### P2-01: store the fleet and adopt the current server
+### P2-01: store the fleet and adopt the current server (complete)
 
 Migration 2 creates the D2-01 schema and turns the configured server into stored server one, without touching its Docker target, credentials, backups, or audit history.
 
@@ -190,6 +190,8 @@ Migration 2 creates the D2-01 schema and turns the configured server into stored
 - A mismatch between an environment variable and the adopted row is a startup error. Variables stay authoritative for the adopted server only until Phase 3.
 
 **Done when.** A copy of a Phase 1 database opens on migration 2 with its users, sessions, audit, backups, and RCON password intact, the operator signs in with the same credentials, and the dashboard drives the same container.
+
+Shipped in `backend/internal/store/migrate.go`. The role each account held moved to its grant, so `store.User.Role` now reads from `server_grants` and `administrator` also carries `fleet_owner`. The encrypted RCON credentials moved to `server_secrets` under the settings key they were encrypted with, because that string is the cipher's associated data. `auth.Allows` and the unprefixed routes are untouched; P2-02 replaces them.
 
 ### P2-02: authorize every route against one server
 

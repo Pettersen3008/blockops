@@ -24,13 +24,23 @@ var (
 
 type Store struct {
 	db *sql.DB
+	// ponytail: the adopted server every query is scoped to. P2-02 puts the server
+	// ID on the request and this field goes away.
+	serverID string
 }
+
+// RCONSecretName is the server_secrets row holding the encrypted RCON
+// credentials. It keeps the app_settings key it was encrypted under, because that
+// string is also the cipher's associated data and migration 2 moved the
+// ciphertext unchanged.
+const RCONSecretName = "integration.rcon.v1"
 
 type User struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
+	FleetOwner   bool      `json:"fleetOwner"`
 	Disabled     bool      `json:"disabled"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
@@ -94,7 +104,7 @@ type Backup struct {
 	Status    string    `json:"status"`
 }
 
-func Open(ctx context.Context, path string) (*Store, error) {
+func Open(ctx context.Context, path string, adopt Adoption) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, fmt.Errorf("create database directory: %w", err)
 	}
@@ -105,7 +115,12 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	db.SetMaxOpenConns(1)
 	db.SetConnMaxLifetime(0)
 	store := &Store{db: db}
-	if err := store.migrate(ctx); err != nil {
+	if err := store.migrate(ctx, adopt); err != nil {
+		db.Close()
+		return nil, err
+	}
+	store.serverID, err = store.loadAdoptedServer(ctx, adopt)
+	if err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -148,8 +163,8 @@ func (s *Store) CreateInitialUser(ctx context.Context, user User) error {
 	if count != 0 {
 		return ErrAlreadyExists
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)`, user.ID, user.Username, user.PasswordHash, user.Role, formatTime(user.CreatedAt)); err != nil {
-		return classifyConflict("insert initial user", err)
+	if err := s.insertUser(ctx, tx, user, user.ID); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit initial user: %w", err)
@@ -157,38 +172,69 @@ func (s *Store) CreateInitialUser(ctx context.Context, user User) error {
 	return nil
 }
 
-func (s *Store) CreateUser(ctx context.Context, user User) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)`, user.ID, user.Username, user.PasswordHash, user.Role, formatTime(user.CreatedAt))
-	return classifyConflict("insert user", err)
+func (s *Store) CreateUser(ctx context.Context, user User, grantedBy string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin user transaction: %w", err)
+	}
+	defer tx.Rollback()
+	if err := s.insertUser(ctx, tx, user, grantedBy); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit user: %w", err)
+	}
+	return nil
 }
 
+// insertUser writes the account and the grant that carries its role together, so
+// an account can never exist with no access to the server it was created for.
+func (s *Store) insertUser(ctx context.Context, tx *sql.Tx, user User, grantedBy string) error {
+	created := formatTime(user.CreatedAt)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO users(id,username,password_hash,fleet_owner,created_at) VALUES(?,?,?,?,?)`,
+		user.ID, user.Username, user.PasswordHash, user.FleetOwner, created); err != nil {
+		return classifyConflict("insert user", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO server_grants(user_id,server_id,role,granted_by,granted_at) VALUES(?,?,?,?,?)`,
+		user.ID, s.serverID, user.Role, grantedBy, created); err != nil {
+		return classifyConflict("insert user grant", err)
+	}
+	return nil
+}
+
+// userColumns reads the role off the grant on the adopted server, so the one
+// place a role is stored is the grant table.
+const userColumns = `SELECT u.id,u.username,u.password_hash,COALESCE(g.role,''),u.fleet_owner,u.disabled,u.created_at
+  FROM users u LEFT JOIN server_grants g ON g.user_id = u.id AND g.server_id = ?`
+
 func (s *Store) UserByUsername(ctx context.Context, username string) (User, error) {
-	return scanUser(s.db.QueryRowContext(ctx, `SELECT id,username,password_hash,role,disabled,created_at FROM users WHERE username = ?`, username))
+	return scanUser(s.db.QueryRowContext(ctx, userColumns+` WHERE u.username = ?`, s.serverID, username))
 }
 
 func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
-	return scanUser(s.db.QueryRowContext(ctx, `SELECT id,username,password_hash,role,disabled,created_at FROM users WHERE id = ?`, id))
+	return scanUser(s.db.QueryRowContext(ctx, userColumns+` WHERE u.id = ?`, s.serverID, id))
 }
 
 type rowScanner interface{ Scan(...any) error }
 
 func scanUser(row rowScanner) (User, error) {
 	var user User
-	var disabled int
+	var disabled, fleetOwner int
 	var created string
-	if err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &disabled, &created); err != nil {
+	if err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &fleetOwner, &disabled, &created); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, ErrNotFound
 		}
 		return User{}, fmt.Errorf("scan user: %w", err)
 	}
+	user.FleetOwner = fleetOwner != 0
 	user.Disabled = disabled != 0
 	user.CreatedAt = parseTime(created)
 	return user, nil
 }
 
 func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,username,password_hash,role,disabled,created_at FROM users ORDER BY username COLLATE NOCASE`)
+	rows, err := s.db.QueryContext(ctx, userColumns+` ORDER BY u.username COLLATE NOCASE`, s.serverID)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
@@ -204,10 +250,12 @@ func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
 	return users, rows.Err()
 }
 
-func (s *Store) ActiveAdministratorCount(ctx context.Context) (int, error) {
+// ActiveFleetOwnerCount guards the last account that can administer the
+// installation. Disabling it would leave nobody able to restore access.
+func (s *Store) ActiveFleetOwnerCount(ctx context.Context) (int, error) {
 	var count int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE role='administrator' AND disabled=0`).Scan(&count); err != nil {
-		return 0, fmt.Errorf("count administrators: %w", err)
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE fleet_owner=1 AND disabled=0`).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count fleet owners: %w", err)
 	}
 	return count, nil
 }
@@ -234,13 +282,14 @@ func (s *Store) CreateSession(ctx context.Context, session Session, userID strin
 
 func (s *Store) SessionByToken(ctx context.Context, token string, now time.Time) (Session, error) {
 	row := s.db.QueryRowContext(ctx, `
-SELECT s.id_hash,s.csrf_token,s.created_at,s.expires_at,u.id,u.username,u.password_hash,u.role,u.disabled,u.created_at
+SELECT s.id_hash,s.csrf_token,s.created_at,s.expires_at,u.id,u.username,u.password_hash,COALESCE(g.role,''),u.fleet_owner,u.disabled,u.created_at
 FROM sessions s JOIN users u ON u.id=s.user_id
-WHERE s.id_hash=? AND s.revoked_at IS NULL AND s.expires_at>? AND u.disabled=0`, TokenHash(token), formatTime(now))
+LEFT JOIN server_grants g ON g.user_id=u.id AND g.server_id=?
+WHERE s.id_hash=? AND s.revoked_at IS NULL AND s.expires_at>? AND u.disabled=0`, s.serverID, TokenHash(token), formatTime(now))
 	var session Session
 	var sessionCreated, expires, userCreated string
-	var disabled int
-	if err := row.Scan(&session.IDHash, &session.CSRFToken, &sessionCreated, &expires, &session.User.ID, &session.User.Username, &session.User.PasswordHash, &session.User.Role, &disabled, &userCreated); err != nil {
+	var disabled, fleetOwner int
+	if err := row.Scan(&session.IDHash, &session.CSRFToken, &sessionCreated, &expires, &session.User.ID, &session.User.Username, &session.User.PasswordHash, &session.User.Role, &fleetOwner, &disabled, &userCreated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Session{}, ErrNotFound
 		}
@@ -248,6 +297,7 @@ WHERE s.id_hash=? AND s.revoked_at IS NULL AND s.expires_at>? AND u.disabled=0`,
 	}
 	session.CreatedAt = parseTime(sessionCreated)
 	session.ExpiresAt = parseTime(expires)
+	session.User.FleetOwner = fleetOwner != 0
 	session.User.Disabled = disabled != 0
 	session.User.CreatedAt = parseTime(userCreated)
 	return session, nil
@@ -354,7 +404,7 @@ ORDER BY occurred_at DESC, id DESC LIMIT ?`
 }
 
 func (s *Store) CreateBackup(ctx context.Context, backup Backup) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO backups(id,filename,size_bytes,created_at,created_by,status) VALUES(?,?,?,?,?,?)`, backup.ID, backup.Filename, backup.SizeBytes, formatTime(backup.CreatedAt), backup.CreatedBy, backup.Status)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO backups(id,server_id,filename,size_bytes,created_at,created_by,status) VALUES(?,?,?,?,?,?,?)`, backup.ID, s.serverID, backup.Filename, backup.SizeBytes, formatTime(backup.CreatedAt), backup.CreatedBy, backup.Status)
 	if err != nil {
 		return fmt.Errorf("create backup record: %w", err)
 	}
@@ -364,7 +414,7 @@ func (s *Store) CreateBackup(ctx context.Context, backup Backup) error {
 func (s *Store) BackupByID(ctx context.Context, id string) (Backup, error) {
 	var backup Backup
 	var created string
-	err := s.db.QueryRowContext(ctx, `SELECT id,filename,size_bytes,created_at,created_by,status FROM backups WHERE id=?`, id).Scan(&backup.ID, &backup.Filename, &backup.SizeBytes, &created, &backup.CreatedBy, &backup.Status)
+	err := s.db.QueryRowContext(ctx, `SELECT id,filename,size_bytes,created_at,created_by,status FROM backups WHERE id=? AND server_id=?`, id, s.serverID).Scan(&backup.ID, &backup.Filename, &backup.SizeBytes, &created, &backup.CreatedBy, &backup.Status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Backup{}, ErrNotFound
 	}
@@ -376,7 +426,7 @@ func (s *Store) BackupByID(ctx context.Context, id string) (Backup, error) {
 }
 
 func (s *Store) ListBackups(ctx context.Context) ([]Backup, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,filename,size_bytes,created_at,created_by,status FROM backups ORDER BY created_at DESC`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,filename,size_bytes,created_at,created_by,status FROM backups WHERE server_id=? ORDER BY created_at DESC`, s.serverID)
 	if err != nil {
 		return nil, fmt.Errorf("list backups: %w", err)
 	}
@@ -395,13 +445,37 @@ func (s *Store) ListBackups(ctx context.Context) ([]Backup, error) {
 }
 
 func (s *Store) DeleteBackup(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM backups WHERE id=?`, id)
+	result, err := s.db.ExecContext(ctx, `DELETE FROM backups WHERE id=? AND server_id=?`, id, s.serverID)
 	if err != nil {
 		return fmt.Errorf("delete backup record: %w", err)
 	}
 	count, _ := result.RowsAffected()
 	if count == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+// ServerSecret and SetServerSecret hold ciphertext for the adopted server. The
+// caller owns the key, so the store never sees plaintext.
+func (s *Store) ServerSecret(ctx context.Context, name string) (string, error) {
+	var ciphertext string
+	err := s.db.QueryRowContext(ctx, `SELECT ciphertext FROM server_secrets WHERE server_id=? AND name=?`, s.serverID, name).Scan(&ciphertext)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("read server secret: %w", err)
+	}
+	return ciphertext, nil
+}
+
+func (s *Store) SetServerSecret(ctx context.Context, name, ciphertext string) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO server_secrets(server_id,name,ciphertext,updated_at) VALUES(?,?,?,?)
+	  ON CONFLICT(server_id,name) DO UPDATE SET ciphertext=excluded.ciphertext, updated_at=excluded.updated_at`,
+		s.serverID, name, ciphertext, formatTime(time.Now().UTC()))
+	if err != nil {
+		return fmt.Errorf("write server secret: %w", err)
 	}
 	return nil
 }

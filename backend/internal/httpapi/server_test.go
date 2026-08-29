@@ -23,10 +23,7 @@ import (
 )
 
 func TestSetupSessionCSRFAndBackendAuthorization(t *testing.T) {
-	database, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "blockops.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	database := openTestStore(t, context.Background())
 	defer database.Close()
 	cfg := config.Config{CookieSecure: false, SessionTTL: time.Hour, MinecraftDataDir: t.TempDir(), BackupDir: t.TempDir(), WorldName: "world", MinecraftContainer: "minecraft"}
 	server, err := New(cfg, database, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -69,7 +66,7 @@ func TestSetupSessionCSRFAndBackendAuthorization(t *testing.T) {
 	}
 
 	viewerID, _ := store.NewID()
-	if err := database.CreateUser(context.Background(), store.User{ID: viewerID, Username: "viewer", PasswordHash: "unused", Role: string(auth.Viewer), CreatedAt: time.Now().UTC()}); err != nil {
+	if err := database.CreateUser(context.Background(), store.User{ID: viewerID, Username: "viewer", PasswordHash: "unused", Role: string(auth.Viewer), CreatedAt: time.Now().UTC()}, "test"); err != nil {
 		t.Fatal(err)
 	}
 	viewerToken := "viewer-session-token"
@@ -138,4 +135,16 @@ func TestSourceIPIgnoresForwardingFromUntrustedPeer(t *testing.T) {
 	if got := server.sourceIP(request); got != "192.0.2.10" {
 		t.Fatalf("sourceIP() = %q, want direct peer", got)
 	}
+}
+
+func openTestStore(t *testing.T, ctx context.Context) *store.Store {
+	t.Helper()
+	database, err := store.Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), store.Adoption{
+		DockerBaseURL: "http://docker-proxy:2375", ContainerName: "minecraft",
+		DataDir: "/minecraft", BackupDir: "/backups", WorldName: "world", RCONAddress: "minecraft:25575",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return database
 }

@@ -13,7 +13,7 @@ import (
 func TestInitialUserSessionAndAuditLifecycle(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"))
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestInitialUserSessionAndAuditLifecycle(t *testing.T) {
 func TestListAuditGivenTiedTimestampsAndFiltersWhenPagingThenTraversesWithoutDuplicates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"))
+	database, err := Open(ctx, filepath.Join(t.TempDir(), "blockops.db"), testAdoption)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestOpenGivenLegacyExactSecondAuditTimeWhenMigratingThenNormalizesOrdering(
 	if err := legacy.Close(); err != nil {
 		t.Fatal(err)
 	}
-	database, err := Open(ctx, path)
+	database, err := Open(ctx, path, testAdoption)
 	if err != nil {
 		t.Fatal(err)
 	}

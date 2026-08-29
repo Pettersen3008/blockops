@@ -5,29 +5,34 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
-func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsVersionOneWithDataIntact(t *testing.T) {
+func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsTheFleetSchemaWithDataIntact(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "blockops.db")
 	writeLegacyDatabase(t, path)
 
-	database, err := Open(ctx, path)
+	database, err := Open(ctx, path, testAdoption)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer database.Close()
 
 	version, err := database.SchemaVersion(ctx)
-	if err != nil || version != 1 {
+	if err != nil || version != 2 {
 		t.Fatalf("SchemaVersion() = %d, %v", version, err)
 	}
 	user, err := database.UserByUsername(ctx, "admin")
-	if err != nil || user.Role != "administrator" {
+	if err != nil || user.Role != "administrator" || !user.FleetOwner {
 		t.Fatalf("UserByUsername() = %+v, %v", user, err)
+	}
+	viewer, err := database.UserByUsername(ctx, "watcher")
+	if err != nil || viewer.Role != "viewer" || viewer.FleetOwner {
+		t.Fatalf("UserByUsername(watcher) = %+v, %v", viewer, err)
 	}
 	session, err := database.SessionByToken(ctx, "legacy-token", time.Now().UTC())
 	if err != nil || session.User.ID != "user-1" {
@@ -41,19 +46,39 @@ func TestOpenGivenPreVersioningDatabaseWhenMigratingThenAdoptsVersionOneWithData
 	if err != nil || len(backups) != 1 || backups[0].Filename != "legacy.zip" {
 		t.Fatalf("ListBackups() = %+v, %v", backups, err)
 	}
-	secret, err := database.Setting(ctx, "rcon.password")
+	secret, err := database.ServerSecret(ctx, RCONSecretName)
 	if err != nil || secret != "encrypted-blob" {
-		t.Fatalf("Setting() = %q, %v", secret, err)
+		t.Fatalf("ServerSecret() = %q, %v", secret, err)
+	}
+	if _, err := database.Setting(ctx, RCONSecretName); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("credentials left behind in app_settings: %v", err)
 	}
 
-	reopened, err := Open(ctx, path)
+	reopened, err := Open(ctx, path, testAdoption)
 	if err != nil {
 		t.Fatalf("second open: %v", err)
 	}
 	defer reopened.Close()
 	applied := 0
-	if err := reopened.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&applied); err != nil || applied != 1 {
+	if err := reopened.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&applied); err != nil || applied != 2 {
 		t.Fatalf("applied migrations = %d, %v", applied, err)
+	}
+}
+
+func TestOpenGivenAnAdoptedServerWhenAVariableChangesThenRefusesToStart(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "blockops.db")
+	database, err := Open(ctx, path, testAdoption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	database.Close()
+
+	repointed := testAdoption
+	repointed.ContainerName = "someone-elses-server"
+	if _, err := Open(ctx, path, repointed); err == nil || !strings.Contains(err.Error(), "BLOCKOPS_MINECRAFT_CONTAINER") {
+		t.Fatalf("Open() error = %v", err)
 	}
 }
 
@@ -61,7 +86,7 @@ func TestOpenGivenSchemaFromANewerBuildWhenOpeningThenRefuses(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "blockops.db")
-	database, err := Open(ctx, path)
+	database, err := Open(ctx, path, testAdoption)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +96,7 @@ func TestOpenGivenSchemaFromANewerBuildWhenOpeningThenRefuses(t *testing.T) {
 	}
 	database.Close()
 
-	if _, err := Open(ctx, path); !errors.Is(err, ErrSchemaTooNew) {
+	if _, err := Open(ctx, path, testAdoption); !errors.Is(err, ErrSchemaTooNew) {
 		t.Fatalf("Open() error = %v", err)
 	}
 }
@@ -92,14 +117,24 @@ func writeLegacyDatabase(t *testing.T, path string) {
 		args  []any
 	}{
 		{`INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)`, []any{"user-1", "admin", "hash", "administrator", now}},
+		{`INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)`, []any{"user-2", "watcher", "hash", "viewer", now}},
 		{`INSERT INTO sessions(id_hash,csrf_token,user_id,created_at,expires_at) VALUES(?,?,?,?,?)`, []any{TokenHash("legacy-token"), "csrf", "user-1", now, formatTime(time.Now().UTC().Add(time.Hour))}},
 		{`INSERT INTO audit_events(id,occurred_at,user_id,username,action,target,source_ip,outcome,details_json) VALUES(?,?,?,?,?,?,?,?,?)`, []any{"audit-1", formatAuditTime(time.Now().UTC()), "user-1", "admin", "server.restart", "minecraft", "127.0.0.1", "success", "{}"}},
 		{`INSERT INTO backups(id,filename,size_bytes,created_at,created_by,status) VALUES(?,?,?,?,?,?)`, []any{"backup-1", "legacy.zip", 1024, now, "admin", "complete"}},
-		{`INSERT INTO app_settings(key,value,updated_at) VALUES(?,?,?)`, []any{"rcon.password", "encrypted-blob", now}},
+		{`INSERT INTO app_settings(key,value,updated_at) VALUES(?,?,?)`, []any{RCONSecretName, "encrypted-blob", now}},
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement.query, statement.args...); err != nil {
 			t.Fatal(err)
 		}
 	}
+}
+
+var testAdoption = Adoption{
+	DockerBaseURL: "http://docker-proxy:2375",
+	ContainerName: "minecraft",
+	DataDir:       "/minecraft",
+	BackupDir:     "/backups",
+	WorldName:     "world",
+	RCONAddress:   "minecraft:25575",
 }

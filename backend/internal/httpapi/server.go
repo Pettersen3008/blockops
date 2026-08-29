@@ -163,7 +163,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, r, err)
 		return
 	}
-	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(auth.Administrator), CreatedAt: time.Now().UTC()}
+	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(auth.Administrator), FleetOwner: true, CreatedAt: time.Now().UTC()}
 	if err := s.store.CreateInitialUser(r.Context(), user); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
 			writeError(w, http.StatusConflict, "setup_complete", "Initial setup has already been completed.")
@@ -553,8 +553,8 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, r, err)
 		return
 	}
-	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(role), CreatedAt: time.Now().UTC()}
-	if err := s.store.CreateUser(r.Context(), user); err != nil {
+	user := store.User{ID: id, Username: input.Username, PasswordHash: hash, Role: string(role), FleetOwner: role == auth.Administrator, CreatedAt: time.Now().UTC()}
+	if err := s.store.CreateUser(r.Context(), user, sessionFrom(r.Context()).User.ID); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
 			writeError(w, http.StatusConflict, "username_exists", "That username already exists.")
 			return
@@ -581,8 +581,8 @@ func (s *Server) disableUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "user_not_found", "The user was not found.")
 		return
 	}
-	if target.Role == string(auth.Administrator) {
-		count, err := s.store.ActiveAdministratorCount(r.Context())
+	if target.FleetOwner {
+		count, err := s.store.ActiveFleetOwnerCount(r.Context())
 		if err != nil {
 			s.internalError(w, r, err)
 			return

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -48,10 +47,7 @@ func TestParseAuditRequestGivenUntrustedValuesWhenParsingThenRejectsInvalidInput
 func TestAuditExportGivenFilteredRowsWhenDownloadingThenCapsAndEscapesCSV(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	database, err := store.Open(ctx, filepath.Join(t.TempDir(), "blockops.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	database := openTestStore(t, ctx)
 	defer database.Close()
 	now := time.Date(2026, time.August, 29, 12, 0, 0, 0, time.UTC)
 	for _, event := range []store.AuditEvent{

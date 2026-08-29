@@ -479,11 +479,12 @@ components:
         password: { type: string, minLength: 12, maxLength: 256, writeOnly: true }
     User:
       type: object
-      required: [id, username, role, disabled, createdAt]
+      required: [id, username, role, fleetOwner, disabled, createdAt]
       properties:
         id: { type: string }
         username: { type: string }
-        role: { $ref: "#/components/schemas/Role" }
+        role: { $ref: "#/components/schemas/Role", description: The role this account holds on the server, read from its grant. }
+        fleetOwner: { type: boolean, description: Manages accounts, nodes, server creation, and installation settings. }
         disabled: { type: boolean }
         createdAt: { type: string, format: date-time }
     Session:

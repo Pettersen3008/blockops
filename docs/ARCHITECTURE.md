@@ -39,4 +39,4 @@ flowchart LR
 
 ## State model
 
-SQLite stores users, password hashes, sessions, audit events, backup catalog entries, and encrypted integration settings. Minecraft remains authoritative for player lists and vanilla permissions. Docker remains authoritative for lifecycle and resource metrics. BlockOps does not duplicate unavailable integration data with fabricated values.
+SQLite stores users, password hashes, sessions, audit events, backup catalog entries, encrypted server secrets, and the fleet tables that give the configured server an identity: `nodes`, `servers`, `server_secrets`, and `server_grants`. Ordered migrations in `backend/internal/store/migrate.go` own the schema, and migration 2 adopted the configured server as stored server one. Minecraft remains authoritative for player lists and vanilla permissions. Docker remains authoritative for lifecycle and resource metrics. BlockOps does not duplicate unavailable integration data with fabricated values.
