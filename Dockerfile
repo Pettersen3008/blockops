@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM oven/bun:1.4.0-alpine AS frontend-build
+FROM oven/bun:1.4.1-alpine AS frontend-build
 WORKDIR /build
 COPY package.json bun.lock bunfig.toml ./
 COPY frontend/package.json frontend/package.json
