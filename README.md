@@ -2,7 +2,7 @@
 
 BlockOps is an open-source, single-server control plane for a Dockerized Minecraft Java server. The release gate tests Paper 1.21.4 build 232. It provides live monitoring, a Minecraft console, player administration, safe world operations, local backups, dashboard roles, and an audit log without exposing a browser shell.
 
-The current release is a strong single-server MVP. Missing integrations are shown as unavailable; the dashboard does not invent metrics or server state.
+BlockOps v1.0 is a single-server release. Missing integrations are shown as unavailable; the dashboard does not invent metrics or server state.
 
 ## What is implemented
 
@@ -53,7 +53,7 @@ The Docker guard is a second process from the same image. Only it mounts `/var/r
 Each [GitHub release](https://github.com/Pettersen3008/blockops/releases) lists one multi-architecture image by digest. Install [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and the [GitHub CLI](https://cli.github.com/), then replace the example version and digest with the release values:
 
 ```sh
-VERSION=v1.2.3
+VERSION=v1.0.0
 IMAGE=ghcr.io/pettersen3008/blockops@sha256:REPLACE_WITH_RELEASE_DIGEST
 
 cosign verify \
@@ -209,11 +209,7 @@ A focused backend regression test forces Docker to reject the replacement start 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — trust boundaries and runtime flow.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — controls, residual risks, and deployment checklist.
 - [`docs/RELEASE.md`](docs/RELEASE.md) — release gate, tested matrix, and evidence checklist.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phase plan, open decisions, and rejected features.
 - [`packages/ui`](packages/ui) — shared interface components.
-- [`AGENTS.md`](AGENTS.md) — verification commands and the rules a change must not break.
-
-The temporary name is centralized in [`frontend/src/config.ts`](frontend/src/config.ts) and [`backend/internal/config/config.go`](backend/internal/config/config.go), with Compose/image labels in the root deployment files.
 
 ## Dependencies
 

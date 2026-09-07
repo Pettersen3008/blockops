@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BlockOps API
-  version: 0.1.0
+  version: 1.0.0
   summary: A constrained management API for one Dockerized Minecraft Java server.
   description: |
     BlockOps accepts Minecraft commands only through RCON. It has no host-shell,
