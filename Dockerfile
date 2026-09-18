@@ -18,7 +18,7 @@ COPY --from=frontend-build /build/frontend/dist/ ./internal/webui/dist/
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/blockops ./cmd/blockops \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/blockops-docker-guard ./cmd/docker-guard
 
-FROM alpine:3.24.1 AS runtime
+FROM alpine:3.24.2 AS runtime
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S -g 10001 blockops \
     && adduser -S -D -H -u 10001 -G blockops blockops \
